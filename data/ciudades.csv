@@ -1,0 +1,8 @@
+id,ciudad,pais,latitud,longitud,alerta_max_temp,alerta_min_temp
+1,Madrid,España,40.4165,-3.70256,,
+2,Bogotá,Colombia,4.60971,-74.08175,,
+3,Buenos Aires,Argentina,-34.61315,-58.37723,,
+4,Valledupar,Colombia,10.46538,-73.2531,28.0,6.0
+5,Cuzco,Perú,-13.53188,-71.96701,,
+6,York,Estados Unidos,40.86807,-97.592,,
+7,Pereira,Colombia,4.81428,-75.69488,,
