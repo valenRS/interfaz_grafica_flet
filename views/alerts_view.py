@@ -9,6 +9,7 @@ from typing import Callable
 import flet as ft
 import pandas as pd
 
+import utils.settings as settings
 from utils.data_manager import get_cities, update_alert
 
 
@@ -45,14 +46,15 @@ class AlertsView:
 
         # ── Controles: sliders ────────────────────────────────────────────────
 
+        _sym = settings.temp_symbol()
         self._max_val_lbl = ft.Text(
-            f"{self._max_val:.0f}°C",
+            f"{settings.convert_temp(self._max_val):.0f}{_sym}",
             size=18,
             weight=ft.FontWeight.BOLD,
             color="#FFCC80",
         )
         self._min_val_lbl = ft.Text(
-            f"{self._min_val:.0f}°C",
+            f"{settings.convert_temp(self._min_val):.0f}{_sym}",
             size=18,
             weight=ft.FontWeight.BOLD,
             color="#80D8FF",
@@ -141,8 +143,9 @@ class AlertsView:
 
         self._max_slider.value = self._max_val
         self._min_slider.value = self._min_val
-        self._max_val_lbl.value = f"{self._max_val:.0f}°C"
-        self._min_val_lbl.value = f"{self._min_val:.0f}°C"
+        sym = settings.temp_symbol()
+        self._max_val_lbl.value = f"{settings.convert_temp(self._max_val):.0f}{sym}"
+        self._min_val_lbl.value = f"{settings.convert_temp(self._min_val):.0f}{sym}"
         self._msg.value = ""
         self.page.update()
 
@@ -152,7 +155,7 @@ class AlertsView:
         if self._max_val <= self._min_val:
             self._max_val = self._min_val + 1
             self._max_slider.value = self._max_val
-        self._max_val_lbl.value = f"{self._max_val:.0f}°C"
+        self._max_val_lbl.value = f"{settings.convert_temp(self._max_val):.0f}{settings.temp_symbol()}"
         self.page.update()
 
     def _on_min_change(self, e: ft.ControlEvent) -> None:
@@ -161,7 +164,7 @@ class AlertsView:
         if self._min_val >= self._max_val:
             self._min_val = self._max_val - 1
             self._min_slider.value = self._min_val
-        self._min_val_lbl.value = f"{self._min_val:.0f}°C"
+        self._min_val_lbl.value = f"{settings.convert_temp(self._min_val):.0f}{settings.temp_symbol()}"
         self.page.update()
 
     def _on_save(self, e: ft.ControlEvent) -> None:
@@ -188,12 +191,27 @@ class AlertsView:
         active = df[pd.notna(df["alerta_max_temp"]) & pd.notna(df["alerta_min_temp"])]
         self._summary_column.controls.clear()
 
+        unit = settings.get_temp_unit()
+        sym  = settings.temp_symbol()
+
         if active.empty:
             self._summary_column.controls.append(
                 ft.Text("Sin alertas activas.", size=13, color="#90CAF9")
             )
         else:
             for _, row in active.iterrows():
+                # Leer columna pre-calculada; si aún no existe (CSV antiguo) calcular
+                if unit == "F":
+                    max_v = (float(row["alerta_max_temp_f"])
+                             if pd.notna(row.get("alerta_max_temp_f"))
+                             else round(float(row["alerta_max_temp"]) * 9 / 5 + 32, 1))
+                    min_v = (float(row["alerta_min_temp_f"])
+                             if pd.notna(row.get("alerta_min_temp_f"))
+                             else round(float(row["alerta_min_temp"]) * 9 / 5 + 32, 1))
+                else:
+                    max_v = float(row["alerta_max_temp"])
+                    min_v = float(row["alerta_min_temp"])
+
                 self._summary_column.controls.append(
                     ft.Container(
                         bgcolor="#0D47A1",
@@ -211,12 +229,12 @@ class AlertsView:
                                     expand=True,
                                 ),
                                 ft.Text(
-                                    f"↑{float(row['alerta_max_temp']):.0f}°",
+                                    f"↑{max_v:.0f}{sym}",
                                     color="#FFCC80",
                                     size=13,
                                 ),
                                 ft.Text(
-                                    f"↓{float(row['alerta_min_temp']):.0f}°",
+                                    f"↓{min_v:.0f}{sym}",
                                     color="#80D8FF",
                                     size=13,
                                 ),

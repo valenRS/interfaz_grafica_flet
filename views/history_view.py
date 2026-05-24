@@ -12,6 +12,7 @@ from typing import Callable
 import flet as ft
 import pandas as pd
 
+import utils.settings as settings
 from utils.api_client import get_historical
 from utils.chart_generator import chart_precipitacion, chart_temperatura
 from utils.data_manager import get_cities, get_history, save_history
@@ -99,16 +100,16 @@ class HistoryView:
         # ── Controles: gráficas ───────────────────────────────────────────────
 
         self._chart_temp = ft.Image(
-            width=680,
             height=250,
             fit=ft.ImageFit.CONTAIN,
             visible=False,
+            expand=True,
         )
         self._chart_prec = ft.Image(
-            width=680,
             height=250,
             fit=ft.ImageFit.CONTAIN,
             visible=False,
+            expand=True,
         )
         self._chart_label_temp = ft.Text(
             "Temperatura (°C)", size=13, color="#90CAF9",
@@ -117,6 +118,77 @@ class HistoryView:
         self._chart_label_prec = ft.Text(
             "Precipitación acumulada (mm)", size=13, color="#90CAF9",
             weight=ft.FontWeight.W_500, visible=False,
+        )
+
+        # ── Controles: estadísticas ──────────────────────────────────────────
+
+        self._stat_avg_max    = ft.Text("—", size=20, weight=ft.FontWeight.BOLD, color="#EF5350")
+        self._stat_avg_min    = ft.Text("—", size=20, weight=ft.FontWeight.BOLD, color="#42A5F5")
+        self._stat_avg_prec   = ft.Text("—", size=20, weight=ft.FontWeight.BOLD, color="#29B6F6")
+        self._stat_total_prec = ft.Text("—", size=20, weight=ft.FontWeight.BOLD, color="#0288D1")
+
+        self._stats_temp_panel = ft.Container(
+            visible=False,
+            bgcolor="#0D47A1",
+            border_radius=12,
+            padding=ft.padding.all(16),
+            width=162,
+            content=ft.Column(
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=12,
+                controls=[
+                    ft.Text("Estadísticas", size=12, weight=ft.FontWeight.W_600, color="#90CAF9"),
+                    ft.Divider(color="#1565C0", height=1),
+                    ft.Column(
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=2,
+                        controls=[
+                            ft.Text("Prom. máxima", size=11, color="#FFCC80"),
+                            self._stat_avg_max,
+                        ],
+                    ),
+                    ft.Column(
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=2,
+                        controls=[
+                            ft.Text("Prom. mínima", size=11, color="#80D8FF"),
+                            self._stat_avg_min,
+                        ],
+                    ),
+                ],
+            ),
+        )
+
+        self._stats_prec_panel = ft.Container(
+            visible=False,
+            bgcolor="#0D47A1",
+            border_radius=12,
+            padding=ft.padding.all(16),
+            width=162,
+            content=ft.Column(
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=12,
+                controls=[
+                    ft.Text("Estadísticas", size=12, weight=ft.FontWeight.W_600, color="#90CAF9"),
+                    ft.Divider(color="#1565C0", height=1),
+                    ft.Column(
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=2,
+                        controls=[
+                            ft.Text("Prom. diaria", size=11, color="#90CAF9"),
+                            self._stat_avg_prec,
+                        ],
+                    ),
+                    ft.Column(
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=2,
+                        controls=[
+                            ft.Text("Total período", size=11, color="#90CAF9"),
+                            self._stat_total_prec,
+                        ],
+                    ),
+                ],
+            ),
         )
 
         # DatePicker — rango limitado a 91 días atrás (tope del endpoint de forecast)
@@ -204,6 +276,20 @@ class HistoryView:
             self._chart_prec.visible = True
             self._chart_label_temp.visible = True
             self._chart_label_prec.visible = True
+
+            # Calcular estadísticas del período
+            sym      = settings.temp_symbol()
+            avg_max  = df["temp_max"].astype(float).mean()
+            avg_min  = df["temp_min"].astype(float).mean()
+            prec     = df["precipitacion"].astype(float).fillna(0)
+
+            self._stat_avg_max.value    = f"{settings.convert_temp(avg_max):.1f}{sym}"
+            self._stat_avg_min.value    = f"{settings.convert_temp(avg_min):.1f}{sym}"
+            self._stat_avg_prec.value   = f"{prec.mean():.1f} mm"
+            self._stat_total_prec.value = f"{prec.sum():.1f} mm"
+            self._stats_temp_panel.visible = True
+            self._stats_prec_panel.visible = True
+
             self._msg.value = f"Mostrando {len(df)} días para {city}."
             self._msg.color = "#A5D6A7"
 
@@ -303,22 +389,38 @@ class HistoryView:
                             controls=[
                                 controls_panel,
                                 self._chart_label_temp,
-                                ft.Container(
-                                    content=self._chart_temp,
-                                    bgcolor="#0D47A1",
-                                    border_radius=12,
-                                    padding=ft.padding.all(12),
-                                    shadow=ft.BoxShadow(blur_radius=12, color="black12",
-                                                        offset=ft.Offset(0, 4)),
+                                ft.Row(
+                                    spacing=12,
+                                    vertical_alignment=ft.CrossAxisAlignment.START,
+                                    controls=[
+                                        ft.Container(
+                                            content=self._chart_temp,
+                                            bgcolor="#0D47A1",
+                                            border_radius=12,
+                                            padding=ft.padding.all(12),
+                                            shadow=ft.BoxShadow(blur_radius=12, color="black12",
+                                                                offset=ft.Offset(0, 4)),
+                                            expand=True,
+                                        ),
+                                        self._stats_temp_panel,
+                                    ],
                                 ),
                                 self._chart_label_prec,
-                                ft.Container(
-                                    content=self._chart_prec,
-                                    bgcolor="#0D47A1",
-                                    border_radius=12,
-                                    padding=ft.padding.all(12),
-                                    shadow=ft.BoxShadow(blur_radius=12, color="black12",
-                                                        offset=ft.Offset(0, 4)),
+                                ft.Row(
+                                    spacing=12,
+                                    vertical_alignment=ft.CrossAxisAlignment.START,
+                                    controls=[
+                                        ft.Container(
+                                            content=self._chart_prec,
+                                            bgcolor="#0D47A1",
+                                            border_radius=12,
+                                            padding=ft.padding.all(12),
+                                            shadow=ft.BoxShadow(blur_radius=12, color="black12",
+                                                                offset=ft.Offset(0, 4)),
+                                            expand=True,
+                                        ),
+                                        self._stats_prec_panel,
+                                    ],
                                 ),
                             ],
                         ),

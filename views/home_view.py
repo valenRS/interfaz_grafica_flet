@@ -313,11 +313,28 @@ class HomeView:
         max_t = row["alerta_max_temp"]
         min_t = row["alerta_min_temp"]
 
+        sym  = settings.temp_symbol()
+        unit = settings.get_temp_unit()
+
         msg = ""
         if pd.notna(max_t) and temp > float(max_t):
-            msg = f"Temperatura actual ({temp:.0f}°C) supera el umbral máximo ({float(max_t):.0f}°C)"
+            disp_temp = settings.convert_temp(temp)
+            if unit == "F":
+                disp_max = (float(row["alerta_max_temp_f"])
+                            if pd.notna(row.get("alerta_max_temp_f"))
+                            else round(float(max_t) * 9 / 5 + 32, 1))
+            else:
+                disp_max = float(max_t)
+            msg = f"Temperatura actual ({disp_temp:.0f}{sym}) supera el umbral máximo ({disp_max:.0f}{sym})"
         elif pd.notna(min_t) and temp < float(min_t):
-            msg = f"Temperatura actual ({temp:.0f}°C) está bajo el umbral mínimo ({float(min_t):.0f}°C)"
+            disp_temp = settings.convert_temp(temp)
+            if unit == "F":
+                disp_min = (float(row["alerta_min_temp_f"])
+                            if pd.notna(row.get("alerta_min_temp_f"))
+                            else round(float(min_t) * 9 / 5 + 32, 1))
+            else:
+                disp_min = float(min_t)
+            msg = f"Temperatura actual ({disp_temp:.0f}{sym}) está bajo el umbral mínimo ({disp_min:.0f}{sym})"
 
         self._alert_text.value = msg
         self._alert_banner.visible = bool(msg)
@@ -341,16 +358,14 @@ class HomeView:
         self._btn_temp_unit.text = settings.temp_symbol()
         if self._weather_data:
             self._display_weather(self._weather_data)
-        else:
-            self.page.update()
+        self.page.update()
 
     def _toggle_speed(self, e: ft.ControlEvent) -> None:
         settings.set_speed_unit("mph" if settings.get_speed_unit() == "kmh" else "kmh")
         self._btn_speed_unit.text = settings.speed_symbol()
         if self._weather_data:
             self._display_weather(self._weather_data)
-        else:
-            self.page.update()
+        self.page.update()
 
     # ── Búsqueda con opciones múltiples ────────────────────────────────────────
 
@@ -454,6 +469,16 @@ class HomeView:
                         spacing=28,
                         controls=[self._sens_lbl, self._wind_lbl, self._hum_lbl],
                     ),
+                    ft.Divider(color="#1565C0", height=1),
+                    ft.Row(
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        spacing=10,
+                        controls=[
+                            ft.Text("Unidades:", size=12, color="#90CAF9"),
+                            self._btn_temp_unit,
+                            self._btn_speed_unit,
+                        ],
+                    ),
                 ],
             ),
         )
@@ -469,9 +494,6 @@ class HomeView:
                         ft.Text("MeteoApp", size=20, weight=ft.FontWeight.BOLD, color="#FFFFFF"),
                     ]),
                     ft.Row(spacing=4, controls=[
-                        self._btn_temp_unit,
-                        self._btn_speed_unit,
-                        ft.VerticalDivider(width=1, color="#42A5F5"),
                         ft.TextButton(
                             "Historial",
                             icon=ft.Icons.BAR_CHART,

@@ -18,7 +18,9 @@ CIUDADES_CSV = DATA_DIR / "ciudades.csv"
 HISTORIAL_CSV = DATA_DIR / "historial_clima.csv"
 
 _USUARIOS_COLS = ["id", "username", "password_hash", "fecha_registro"]
-_CIUDADES_COLS = ["id", "ciudad", "pais", "latitud", "longitud", "alerta_max_temp", "alerta_min_temp"]
+_CIUDADES_COLS = ["id", "ciudad", "pais", "latitud", "longitud",
+                  "alerta_max_temp", "alerta_min_temp",
+                  "alerta_max_temp_f", "alerta_min_temp_f"]
 _HISTORIAL_COLS = ["id", "ciudad", "fecha", "temp_max", "temp_min", "precipitacion", "viento_max"]
 
 # ── Helpers privados ──────────────────────────────────────────────────────────
@@ -26,7 +28,12 @@ _HISTORIAL_COLS = ["id", "ciudad", "fecha", "temp_max", "temp_min", "precipitaci
 def _read_csv(path: Path, cols: list) -> pd.DataFrame:
     """Lee un CSV; si no existe o está vacío retorna un DataFrame con las columnas indicadas."""
     if path.exists() and path.stat().st_size > 0:
-        return pd.read_csv(path)
+        df = pd.read_csv(path)
+        # Migración automática: añadir columnas nuevas que no existan en CSV anteriores
+        for col in cols:
+            if col not in df.columns:
+                df[col] = None
+        return df
     return pd.DataFrame(columns=cols)
 
 
@@ -81,6 +88,8 @@ def add_city(ciudad: str, pais: str, latitud: float, longitud: float) -> bool:
         "longitud": longitud,
         "alerta_max_temp": None,
         "alerta_min_temp": None,
+        "alerta_max_temp_f": None,
+        "alerta_min_temp_f": None,
     }])
     _write_csv(pd.concat([df, new_row], ignore_index=True), CIUDADES_CSV)
     return True
@@ -93,10 +102,14 @@ def delete_city(city_id: int) -> None:
 
 
 def update_alert(city_id: int, max_temp: float | None, min_temp: float | None) -> None:
-    """Actualiza los umbrales de alerta de temperatura para una ciudad."""
+    """Actualiza los umbrales de alerta en °C y °F para una ciudad."""
     df = _read_csv(CIUDADES_CSV, _CIUDADES_COLS)
-    df.loc[df["id"] == city_id, "alerta_max_temp"] = max_temp
-    df.loc[df["id"] == city_id, "alerta_min_temp"] = min_temp
+    max_f = round(max_temp * 9 / 5 + 32, 1) if max_temp is not None else None
+    min_f = round(min_temp * 9 / 5 + 32, 1) if min_temp is not None else None
+    df.loc[df["id"] == city_id, "alerta_max_temp"]   = max_temp
+    df.loc[df["id"] == city_id, "alerta_min_temp"]   = min_temp
+    df.loc[df["id"] == city_id, "alerta_max_temp_f"] = max_f
+    df.loc[df["id"] == city_id, "alerta_min_temp_f"] = min_f
     _write_csv(df, CIUDADES_CSV)
 
 
