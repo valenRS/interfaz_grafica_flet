@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import base64
 import io
+from datetime import datetime
 from typing import Callable
 
 import flet as ft
@@ -14,7 +15,7 @@ from PIL import Image, ImageDraw
 
 import utils.settings as settings
 from utils.api_client import get_current_weather, get_current_weather_from_geo, search_cities
-from utils.data_manager import add_city, get_cities
+from utils.data_manager import add_city, get_cities, get_weather_cache, save_weather_cache
 
 # ── Generación de íconos con Pillow ──────────────────────────────────────────
 
@@ -208,6 +209,23 @@ class HomeView:
             ),
         )
 
+        # ── Controles: banner sin conexión ──────────────────────────────────────
+
+        self._offline_text = ft.Text("", color="#FFFFFF", size=13)
+        self._offline_banner = ft.Container(
+            visible=False,
+            bgcolor="#E65100",
+            border_radius=8,
+            padding=ft.padding.symmetric(horizontal=16, vertical=10),
+            content=ft.Row(
+                spacing=10,
+                controls=[
+                    ft.Icon(ft.Icons.WIFI_OFF, color="#FFFFFF", size=22),
+                    self._offline_text,
+                ],
+            ),
+        )
+
         # Tarjeta del clima (armada en build())
         self._weather_card: ft.Container | None = None
 
@@ -259,11 +277,17 @@ class HomeView:
 
         options = search_cities(city, count=5)
         if not options:
+            # Sin resultado: puede ser falta de internet → intentar cache
+            cached = get_weather_cache(city)
+            if cached is not None:
+                self._show_offline_weather(cached)
+                return
             self._msg.value = "Ciudad no encontrada o sin conexión a internet."
             self._msg.color = "#EF9A9A"
             self._weather_data = None
             self._weather_card.visible = False
             self._alert_banner.visible = False
+            self._offline_banner.visible = False
             self._save_checkbox.disabled = True
             self.page.update()
             return
@@ -272,6 +296,31 @@ class HomeView:
             self._on_city_selected(options[0])
         else:
             self._show_city_options(options)
+
+    def _show_offline_weather(self, cached: dict) -> None:
+        """Muestra el último clima cacheado con un aviso de sin conexión."""
+        self._weather_data = cached
+        self._display_weather(cached)
+        self._check_alert(cached)
+
+        fecha = cached.get("ultima_consulta", "")
+        try:
+            dt = datetime.fromisoformat(str(fecha))
+            fecha_str = dt.strftime("%d/%m/%Y %H:%M")
+        except (ValueError, TypeError):
+            fecha_str = str(fecha)
+
+        self._offline_text.value = (
+            f"Sin internet · Último dato: {fecha_str}"
+        )
+        self._offline_banner.visible = True
+
+        fav_df = get_cities()
+        is_fav = not fav_df[fav_df["ciudad"].str.lower() == cached["ciudad"].lower()].empty
+        self._save_checkbox.value = is_fav
+        self._save_checkbox.disabled = True  # no se puede modificar sin conexión
+        self._msg.value = ""
+        self.page.update()
 
     def _display_weather(self, data: dict) -> None:
         self._weather_icon.src_base64 = _make_icon(data.get("icono", "unknown"))
@@ -411,11 +460,19 @@ class HomeView:
 
         data = get_current_weather_from_geo(geo)
         if data is None:
+            # Sin conexión: intentar cache por nombre de ciudad
+            cached = get_weather_cache(geo.get("name", ""))
+            if cached is not None:
+                self._show_offline_weather(cached)
+                return
             self._msg.value = "Sin conexión a internet."
             self._msg.color = "#EF9A9A"
             self.page.update()
             return
 
+        # Éxito: guardar en cache y ocultar banner offline
+        save_weather_cache(data)
+        self._offline_banner.visible = False
         self._weather_data = data
         self._msg.value = ""
         self._display_weather(data)
@@ -567,6 +624,7 @@ class HomeView:
                             spacing=20,
                             controls=[
                                 search_panel,
+                                self._offline_banner,
                                 self._weather_card,
                                 self._alert_banner,
                             ],
