@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import base64
+import math
 import threading
 from datetime import datetime, timedelta
 from typing import Callable
@@ -283,8 +284,17 @@ class HistoryView:
             avg_min  = df["temp_min"].astype(float).mean()
             prec     = df["precipitacion"].astype(float).fillna(0)
 
-            self._stat_avg_max.value    = f"{settings.convert_temp(avg_max):.1f}{sym}"
-            self._stat_avg_min.value    = f"{settings.convert_temp(avg_min):.1f}{sym}"
+            def _fmt_temp(val: float) -> str:
+                """Convierte y formatea una temperatura; devuelve '—' si es NaN/None."""
+                if val is None or (isinstance(val, float) and math.isnan(val)):
+                    return "—"
+                converted = settings.convert_temp(val)
+                if converted is None or (isinstance(converted, float) and math.isnan(converted)):
+                    return "—"
+                return f"{converted:.1f}{sym}"
+
+            self._stat_avg_max.value    = _fmt_temp(avg_max)
+            self._stat_avg_min.value    = _fmt_temp(avg_min)
             self._stat_avg_prec.value   = f"{prec.mean():.1f} mm"
             self._stat_total_prec.value = f"{prec.sum():.1f} mm"
             self._stats_temp_panel.visible = True
@@ -294,6 +304,9 @@ class HistoryView:
             self._msg.color = "#A5D6A7"
 
         except Exception as exc:  # noqa: BLE001
+            import traceback
+            with open("error_log.txt", "a") as f:
+                f.write(traceback.format_exc() + "\\n")
             self._msg.value = f"Error al cargar datos: {exc}"
             self._msg.color = "#EF9A9A"
 

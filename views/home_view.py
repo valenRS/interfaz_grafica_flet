@@ -248,6 +248,20 @@ class HomeView:
             height=32,
         )
 
+        # Botones duplicados para la cabecera (sin quitar los de la tarjeta)
+        self._hdr_btn_temp_unit = ft.OutlinedButton(
+            text=settings.temp_symbol(),
+            on_click=self._toggle_temp,
+            style=_btn_style,
+            height=28,
+        )
+        self._hdr_btn_speed_unit = ft.OutlinedButton(
+            text=settings.speed_symbol(),
+            on_click=self._toggle_speed,
+            style=_btn_style,
+            height=28,
+        )
+
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     def _refresh_dropdown(self, update: bool = False) -> None:
@@ -406,6 +420,9 @@ class HomeView:
     def _toggle_temp(self, e: ft.ControlEvent) -> None:
         settings.set_temp_unit("F" if settings.get_temp_unit() == "C" else "C")
         self._btn_temp_unit.text = settings.temp_symbol()
+        # Also update header button if exists
+        if hasattr(self, "_hdr_btn_temp_unit"):
+            self._hdr_btn_temp_unit.text = settings.temp_symbol()
         if self._weather_data:
             self._display_weather(self._weather_data)
         self.page.update()
@@ -413,6 +430,9 @@ class HomeView:
     def _toggle_speed(self, e: ft.ControlEvent) -> None:
         settings.set_speed_unit("mph" if settings.get_speed_unit() == "kmh" else "kmh")
         self._btn_speed_unit.text = settings.speed_symbol()
+        # Also update header button if exists
+        if hasattr(self, "_hdr_btn_speed_unit"):
+            self._hdr_btn_speed_unit.text = settings.speed_symbol()
         if self._weather_data:
             self._display_weather(self._weather_data)
         self.page.update()
@@ -570,6 +590,9 @@ class HomeView:
                             on_click=lambda _: self.on_go_alerts(),
                             style=ft.ButtonStyle(color="#FFFFFF"),
                         ),
+                        # Botones de unidades en header (duplicados)
+                        self._hdr_btn_temp_unit,
+                        self._hdr_btn_speed_unit,
                         ft.VerticalDivider(width=1, color="#42A5F5"),
                         ft.Text(f"👤 {self.username}", color="#90CAF9", size=13),
                         ft.IconButton(

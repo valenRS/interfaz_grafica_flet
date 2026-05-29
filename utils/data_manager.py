@@ -26,6 +26,9 @@ _CIUDADES_COLS = [
     "temperatura", "temp_max", "temp_min", "sensacion_termica",
     "humedad", "viento", "codigo_clima", "descripcion", "icono", "ultima_consulta",
 ]
+
+# Columnas de texto en ciudades.csv que deben permanecer como object/str
+_CIUDADES_STR_COLS = {"username", "ciudad", "pais", "codigo_clima", "descripcion", "icono", "ultima_consulta"}
 _HISTORIAL_COLS = ["id", "ciudad", "fecha", "temp_max", "temp_min", "precipitacion", "viento_max"]
 _CACHE_COLS     = [
     "ciudad", "pais", "latitud", "longitud",
@@ -36,14 +39,25 @@ _CACHE_COLS     = [
 
 # ── Helpers privados ──────────────────────────────────────────────────────────
 
-def _read_csv(path: Path, cols: list) -> pd.DataFrame:
-    """Lee un CSV; si no existe o está vacío retorna un DataFrame con las columnas indicadas."""
+def _read_csv(path: Path, cols: list, str_cols: set | None = None) -> pd.DataFrame:
+    """Lee un CSV; si no existe o está vacío retorna un DataFrame con las columnas indicadas.
+
+    Args:
+        str_cols: conjunto de nombres de columnas que deben mantenerse como dtype object
+                  (string). Evita que pandas infiera float64 en columnas vacías de texto.
+    """
     if path.exists() and path.stat().st_size > 0:
-        df = pd.read_csv(path)
+        dtype_map = {col: object for col in str_cols if col in cols} if str_cols else None
+        df = pd.read_csv(path, dtype=dtype_map)
         # Migración automática: añadir columnas nuevas que no existan en CSV anteriores
         for col in cols:
             if col not in df.columns:
                 df[col] = None
+        # Forzar dtype object en columnas de texto que pudieran haberse inferido como float64
+        if str_cols:
+            for col in str_cols:
+                if col in df.columns and df[col].dtype != object:
+                    df[col] = df[col].astype(object)
         return df
     return pd.DataFrame(columns=cols)
 
@@ -120,7 +134,7 @@ def delete_city(username: str, city_id: int) -> None:
 
 def update_city_weather(username: str, ciudad: str, data: dict) -> None:
     """Guarda el último clima consultado en la fila de la ciudad favorita del usuario en ciudades.csv."""
-    df = _read_csv(CIUDADES_CSV, _CIUDADES_COLS)
+    df = _read_csv(CIUDADES_CSV, _CIUDADES_COLS, str_cols=_CIUDADES_STR_COLS)
     mask = (df["username"] == username) & (df["ciudad"].str.lower() == ciudad.lower())
     if mask.sum() == 0:
         return  # no es favorita de este usuario, nada que actualizar
@@ -232,7 +246,7 @@ def get_weather_cache(ciudad: str, username: str | None = None) -> dict | None:
 
     # 1. Buscar en ciudades favoritas del usuario
     if username is not None:
-        fav_df = _read_csv(CIUDADES_CSV, _CIUDADES_COLS)
+        fav_df = _read_csv(CIUDADES_CSV, _CIUDADES_COLS, str_cols=_CIUDADES_STR_COLS)
         fav_match = fav_df[
             (fav_df["username"] == username)
             & (fav_df["ciudad"].str.lower() == ciudad.lower())

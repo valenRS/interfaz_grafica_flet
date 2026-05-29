@@ -32,6 +32,8 @@ def chart_temperatura(df: pd.DataFrame, ciudad: str) -> str:
     """
     data = df.copy()
     data["fecha"] = pd.to_datetime(data["fecha"])
+    data["temp_max"] = pd.to_numeric(data["temp_max"], errors="coerce")
+    data["temp_min"] = pd.to_numeric(data["temp_min"], errors="coerce")
 
     fig, ax = plt.subplots(figsize=(10, 4))
 
