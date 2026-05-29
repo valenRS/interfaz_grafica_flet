@@ -1,4 +1,4 @@
-# Valentina Rodriguez Sepulveda — 1121789977
+# Valentina Rodriguez Sepulveda — 1125789977
 # utils/settings.py — Preferencias de unidades de medida (temperatura y velocidad)
 # MeteoApp — Dashboard Meteorológico Personal
 

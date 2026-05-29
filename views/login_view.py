@@ -1,4 +1,4 @@
-# Valentina Rodriguez Sepulveda — 1121789977
+# Valentina Rodriguez Sepulveda — 1125789977
 # views/login_view.py — Ventana de inicio de sesión y registro
 # MeteoApp — Dashboard Meteorológico Personal
 

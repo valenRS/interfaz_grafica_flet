@@ -1,4 +1,4 @@
-# Valentina Rodriguez Sepulveda — 1121789977
+# Valentina Rodriguez Sepulveda — 1125789977
 # utils/chart_generator.py — Generación de gráficas con matplotlib
 # MeteoApp — Dashboard Meteorológico Personal
 

@@ -2,3 +2,11 @@
 __pycache__/
 *.pyc
 .github/
+
+# Archivos de datos y usuario (no subir datos generados)
+data/*.csv
+!data/.gitkeep
+
+# Gráficas generadas dinámicamente
+assets/charts/*.png
+!assets/charts/.gitkeep

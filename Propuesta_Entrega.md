@@ -15,7 +15,7 @@
 | Campo | Información |
 |---|---|
 | **Nombre completo** | [Valentina Rodriguez Sepulveda] |
-| **Código estudiantil** | [1121789977] |
+| **Código estudiantil** | [1125789977] |
 | **Correo institucional** | [valentina.rodriguez6@utp.edu.co] |
 | **Fecha de presentación** | 13 de mayo de 2026 |
 

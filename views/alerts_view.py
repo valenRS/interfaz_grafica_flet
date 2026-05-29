@@ -1,4 +1,4 @@
-# Valentina Rodriguez Sepulveda — 1121789977
+# Valentina Rodriguez Sepulveda — 1125789977
 # views/alerts_view.py — Configuración de alertas de temperatura
 # MeteoApp — Dashboard Meteorológico Personal
 
@@ -110,7 +110,7 @@ class AlertsView:
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     def _refresh_dropdown(self) -> None:
-        df = get_cities()
+        df = get_cities(self.username)
         self._city_dropdown.options = [
             ft.dropdown.Option(str(row["ciudad"])) for _, row in df.iterrows()
         ]
@@ -120,7 +120,7 @@ class AlertsView:
         if not city_name:
             return
 
-        df = get_cities()
+        df = get_cities(self.username)
         match = df[df["ciudad"] == city_name]
         if match.empty:
             return
@@ -187,7 +187,7 @@ class AlertsView:
         self.page.update()
 
     def _refresh_summary(self) -> None:
-        df = get_cities()
+        df = get_cities(self.username)
         active = df[pd.notna(df["alerta_max_temp"]) & pd.notna(df["alerta_min_temp"])]
         self._summary_column.controls.clear()
 

@@ -1,4 +1,4 @@
-# Valentina Rodriguez Sepulveda — 1121789977
+# Valentina Rodriguez Sepulveda — 1125789977
 # views/cities_view.py — Gestión de ciudades favoritas
 # MeteoApp — Dashboard Meteorológico Personal
 
@@ -75,7 +75,7 @@ class CitiesView:
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     def _refresh_list(self) -> None:
-        df = get_cities()
+        df = get_cities(self.username)
         self._checkboxes.clear()
         self._cities_column.controls.clear()
 
@@ -126,7 +126,7 @@ class CitiesView:
             self.page.update()
             return
 
-        ok = add_city(geo["name"], geo["country"], geo["latitude"], geo["longitude"])
+        ok = add_city(self.username, geo["name"], geo["country"], geo["latitude"], geo["longitude"])
         if not ok:
             self._msg.value = f'"{geo["name"]}" ya está en tu lista.'
             self._msg.color = "#FFCC80"
@@ -149,7 +149,7 @@ class CitiesView:
             return
 
         for city_id in ids_to_delete:
-            delete_city(city_id)
+            delete_city(self.username, city_id)
 
         n = len(ids_to_delete)
         self._msg.value = f"{n} {'ciudad eliminada' if n == 1 else 'ciudades eliminadas'}."

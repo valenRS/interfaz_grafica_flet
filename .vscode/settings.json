@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^python -c \"from utils\\.data_manager import get_cities, add_city, delete_city; from views\\.home_view import HomeView; from views\\.cities_view import CitiesView; from views\\.alerts_view import AlertsView; from views\\.history_view import HistoryView; print\\('✓ Todas las importaciones correctas'\\)\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

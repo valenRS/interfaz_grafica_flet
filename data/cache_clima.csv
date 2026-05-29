@@ -1,4 +1,0 @@
-ciudad,pais,latitud,longitud,temperatura,temp_max,temp_min,sensacion_termica,humedad,viento,codigo_clima,descripcion,icono,ultima_consulta
-Valledupar,Colombia,10.46538,-73.2531,31.7,35.3,24.6,33.7,57,20.6,3,Nublado,cloudy,2026-05-24 17:45:23
-Pereira,Colombia,4.81428,-75.69488,21.1,28.1,17.4,24.5,99,6.3,51,Llovizna ligera,drizzle,2026-05-24 17:45:37
-Buenos Aires,Argentina,-34.61315,-58.37723,12.4,14.4,9.9,12.3,91,3.5,2,Parcialmente nublado,partly_cloudy,2026-05-24 17:45:56

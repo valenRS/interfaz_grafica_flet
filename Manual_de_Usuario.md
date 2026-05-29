@@ -1,25 +1,47 @@
 # Manual de Usuario — MeteoApp
 
 **Dashboard Meteorológico Personal**  
-Valentina Rodriguez Sepulveda — 1121789977  
+Valentina Rodriguez Sepulveda — 1125789977  
 Universidad Tecnológica de Pereira · Interfaz Gráfica con Flet · Mayo 2026
 
 ---
 
 ## Tabla de contenidos
 
-1. [Descripción de la aplicación](#1-descripción-de-la-aplicación)
-2. [Requisitos del sistema](#2-requisitos-del-sistema)
-3. [Instalación](#3-instalación)
-4. [Ejecución de la aplicación](#4-ejecución-de-la-aplicación)
-5. [Guía de uso por ventana](#5-guía-de-uso-por-ventana)
-   - [Ventana 1 — Login y Registro](#ventana-1--login-y-registro)
-   - [Ventana 2 — Clima actual (Pantalla principal)](#ventana-2--clima-actual-pantalla-principal)
-   - [Ventana 3 — Historial meteorológico](#ventana-3--historial-meteorológico)
-   - [Ventana 4 — Ciudades favoritas](#ventana-4--ciudades-favoritas)
-   - [Ventana 5 — Alertas de temperatura](#ventana-5--alertas-de-temperatura)
-6. [Estructura de archivos de datos](#6-estructura-de-archivos-de-datos)
-7. [Preguntas frecuentes](#7-preguntas-frecuentes)
+- [Manual de Usuario — MeteoApp](#manual-de-usuario--meteoapp)
+  - [Tabla de contenidos](#tabla-de-contenidos)
+  - [1. Descripción de la aplicación](#1-descripción-de-la-aplicación)
+  - [2. Requisitos del sistema](#2-requisitos-del-sistema)
+  - [3. Instalación](#3-instalación)
+    - [Paso 1 — Clonar o descargar el proyecto](#paso-1--clonar-o-descargar-el-proyecto)
+    - [Paso 2 — Crear un entorno virtual](#paso-2--crear-un-entorno-virtual)
+    - [Paso 3 — Instalar dependencias](#paso-3--instalar-dependencias)
+    - [Paso 4 — Verificar la instalación (opcional)](#paso-4--verificar-la-instalación-opcional)
+  - [4. Ejecución de la aplicación](#4-ejecución-de-la-aplicación)
+  - [5. Guía de uso por ventana](#5-guía-de-uso-por-ventana)
+    - [Ventana 1 — Login y Registro](#ventana-1--login-y-registro)
+      - [Iniciar sesión](#iniciar-sesión)
+      - [Crear cuenta nueva](#crear-cuenta-nueva)
+    - [Ventana 2 — Clima actual (Pantalla principal)](#ventana-2--clima-actual-pantalla-principal)
+      - [Buscar el clima de una ciudad](#buscar-el-clima-de-una-ciudad)
+      - [Guardar una ciudad como favorita](#guardar-una-ciudad-como-favorita)
+      - [Alertas de temperatura](#alertas-de-temperatura)
+      - [Navegación](#navegación)
+    - [Ventana 3 — Historial meteorológico](#ventana-3--historial-meteorológico)
+      - [Consultar el historial](#consultar-el-historial)
+      - [Cache local](#cache-local)
+    - [Ventana 4 — Ciudades favoritas](#ventana-4--ciudades-favoritas)
+      - [Agregar una ciudad](#agregar-una-ciudad)
+      - [Eliminar ciudades](#eliminar-ciudades)
+    - [Ventana 5 — Alertas de temperatura](#ventana-5--alertas-de-temperatura)
+      - [Configurar una alerta](#configurar-una-alerta)
+      - [Desactivar una alerta](#desactivar-una-alerta)
+      - [Resumen de alertas activas](#resumen-de-alertas-activas)
+  - [6. Estructura de archivos de datos](#6-estructura-de-archivos-de-datos)
+    - [`data/usuarios.csv`](#datausuarioscsv)
+    - [`data/ciudades.csv`](#dataciudadescsv)
+    - [`data/historial_clima.csv`](#datahistorial_climacsv)
+  - [7. Preguntas frecuentes](#7-preguntas-frecuentes)
 
 ---
 

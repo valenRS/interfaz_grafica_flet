@@ -1,4 +1,4 @@
-# Valentina Rodriguez Sepulveda — 1121789977
+# Valentina Rodriguez Sepulveda — 1125789977
 # views/history_view.py — Historial meteorológico y gráficas
 # MeteoApp — Dashboard Meteorológico Personal
 
@@ -202,7 +202,7 @@ class HistoryView:
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     def _refresh_dropdown(self) -> None:
-        df = get_cities()
+        df = get_cities(self.username)
         self._city_dropdown.options = [
             ft.dropdown.Option(str(row["ciudad"])) for _, row in df.iterrows()
         ]
@@ -245,7 +245,7 @@ class HistoryView:
             if not cached.empty and len(cached) >= int(expected * 0.9):
                 df = cached
             else:
-                cities_df = get_cities()
+                cities_df = get_cities(self.username)
                 match = cities_df[cities_df["ciudad"].str.lower() == city.lower()]
                 if match.empty:
                     self._msg.value = "Coordenadas no encontradas. Agrega la ciudad a favoritas primero."

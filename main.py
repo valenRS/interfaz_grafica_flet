@@ -1,4 +1,4 @@
-# Valentina Rodriguez Sepulveda — 1121789977
+# Valentina Rodriguez Sepulveda — 1125789977
 # main.py — Punto de entrada y controlador de navegación
 # MeteoApp — Dashboard Meteorológico Personal
 

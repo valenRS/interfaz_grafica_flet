@@ -1,4 +1,4 @@
-# Valentina Rodriguez Sepulveda — 1121789977
+# Valentina Rodriguez Sepulveda — 1125789977
 # utils/data_manager.py — Lectura y escritura de archivos CSV con pandas
 # MeteoApp — Dashboard Meteorológico Personal
 
@@ -20,7 +20,7 @@ CACHE_CSV     = DATA_DIR / "cache_clima.csv"
 
 _USUARIOS_COLS = ["id", "username", "password_hash", "fecha_registro"]
 _CIUDADES_COLS = [
-    "id", "ciudad", "pais", "latitud", "longitud",
+    "id", "username", "ciudad", "pais", "latitud", "longitud",
     "alerta_max_temp", "alerta_min_temp", "alerta_max_temp_f", "alerta_min_temp_f",
     # Último clima consultado (cache offline):
     "temperatura", "temp_max", "temp_min", "sensacion_termica",
@@ -80,19 +80,24 @@ def create_user(username: str, password_hash: str) -> bool:
 
 # ── Ciudades ──────────────────────────────────────────────────────────────────
 
-def get_cities() -> pd.DataFrame:
-    """Retorna todas las ciudades favoritas."""
-    return _read_csv(CIUDADES_CSV, _CIUDADES_COLS)
-
-
-def add_city(ciudad: str, pais: str, latitud: float, longitud: float) -> bool:
-    """Agrega una ciudad. Retorna False si ya existe (por nombre, insensible a mayúsculas)."""
+def get_cities(username: str) -> pd.DataFrame:
+    """Retorna las ciudades favoritas del usuario dado."""
     df = _read_csv(CIUDADES_CSV, _CIUDADES_COLS)
-    if not df[df["ciudad"].str.lower() == ciudad.lower()].empty:
+    if df.empty:
+        return df
+    return df[df["username"] == username].copy()
+
+
+def add_city(username: str, ciudad: str, pais: str, latitud: float, longitud: float) -> bool:
+    """Agrega una ciudad para el usuario. Retorna False si ya existe para ese usuario."""
+    df = _read_csv(CIUDADES_CSV, _CIUDADES_COLS)
+    user_df = df[df["username"] == username] if not df.empty else df
+    if not user_df[user_df["ciudad"].str.lower() == ciudad.lower()].empty:
         return False
     new_id = int(df["id"].max()) + 1 if not df.empty else 1
     new_row = pd.DataFrame([{
         "id": new_id,
+        "username": username,
         "ciudad": ciudad,
         "pais": pais,
         "latitud": latitud,
@@ -106,18 +111,19 @@ def add_city(ciudad: str, pais: str, latitud: float, longitud: float) -> bool:
     return True
 
 
-def delete_city(city_id: int) -> None:
-    """Elimina una ciudad por su id."""
+def delete_city(username: str, city_id: int) -> None:
+    """Elimina la ciudad del usuario dado por su id."""
     df = _read_csv(CIUDADES_CSV, _CIUDADES_COLS)
-    _write_csv(df[df["id"] != city_id], CIUDADES_CSV)
+    # Solo elimina si la ciudad pertenece al usuario
+    _write_csv(df[~((df["id"] == city_id) & (df["username"] == username))], CIUDADES_CSV)
 
 
-def update_city_weather(ciudad: str, data: dict) -> None:
-    """Guarda el último clima consultado en la fila de la ciudad favorita en ciudades.csv."""
+def update_city_weather(username: str, ciudad: str, data: dict) -> None:
+    """Guarda el último clima consultado en la fila de la ciudad favorita del usuario en ciudades.csv."""
     df = _read_csv(CIUDADES_CSV, _CIUDADES_COLS)
-    mask = df["ciudad"].str.lower() == ciudad.lower()
+    mask = (df["username"] == username) & (df["ciudad"].str.lower() == ciudad.lower())
     if mask.sum() == 0:
-        return  # no es favorita, nada que actualizar
+        return  # no es favorita de este usuario, nada que actualizar
     idx = df[mask].index[0]
     for key in ("temperatura", "temp_max", "temp_min", "sensacion_termica",
                 "humedad", "viento", "codigo_clima", "descripcion", "icono"):
@@ -177,14 +183,15 @@ def save_history(new_df: pd.DataFrame) -> None:
 
 # ── Cache de último clima consultado por ciudad ───────────────────────────────
 
-def save_weather_cache(data: dict) -> None:
+def save_weather_cache(data: dict, username: str | None = None) -> None:
     """Guarda o actualiza el último clima completo consultado para una ciudad.
 
-    - Si la ciudad es favorita, actualiza también ciudades.csv.
+    - Si la ciudad es favorita del usuario, actualiza también ciudades.csv.
     - Siempre actualiza cache_clima.csv (cubre ciudades no favoritas también).
     """
-    # 1. Persistir en ciudades.csv si es favorita
-    update_city_weather(data["ciudad"], data)
+    # 1. Persistir en ciudades.csv si es favorita del usuario
+    if username is not None:
+        update_city_weather(username, data["ciudad"], data)
 
     # 2. Actualizar cache general
     df = _read_csv(CACHE_CSV, _CACHE_COLS)
@@ -209,10 +216,10 @@ def save_weather_cache(data: dict) -> None:
     _write_csv(pd.concat([df, new_row], ignore_index=True), CACHE_CSV)
 
 
-def get_weather_cache(ciudad: str) -> dict | None:
+def get_weather_cache(ciudad: str, username: str | None = None) -> dict | None:
     """Retorna el último clima guardado para la ciudad.
 
-    Busca primero en ciudades.csv (favoritas con clima guardado),
+    Busca primero en ciudades.csv (favorita del usuario con clima guardado),
     luego en cache_clima.csv (ciudades no favoritas consultadas).
     """
     _NUM_KEYS = ("temperatura", "temp_max", "temp_min", "sensacion_termica", "humedad", "viento")
@@ -223,13 +230,17 @@ def get_weather_cache(ciudad: str) -> dict | None:
             row[key] = float(val) if pd.notna(val) else None
         return row
 
-    # 1. Buscar en ciudades favoritas
-    fav_df = _read_csv(CIUDADES_CSV, _CIUDADES_COLS)
-    fav_match = fav_df[fav_df["ciudad"].str.lower() == ciudad.lower()]
-    if not fav_match.empty:
-        row = fav_match.iloc[0].to_dict()
-        if pd.notna(row.get("ultima_consulta")):
-            return _normalizar(row)
+    # 1. Buscar en ciudades favoritas del usuario
+    if username is not None:
+        fav_df = _read_csv(CIUDADES_CSV, _CIUDADES_COLS)
+        fav_match = fav_df[
+            (fav_df["username"] == username)
+            & (fav_df["ciudad"].str.lower() == ciudad.lower())
+        ]
+        if not fav_match.empty:
+            row = fav_match.iloc[0].to_dict()
+            if pd.notna(row.get("ultima_consulta")):
+                return _normalizar(row)
 
     # 2. Fallback: cache general
     df = _read_csv(CACHE_CSV, _CACHE_COLS)

@@ -1,4 +1,4 @@
-# Valentina Rodriguez Sepulveda — 1121789977
+# Valentina Rodriguez Sepulveda — 1125789977
 # views/home_view.py — Ventana principal: clima actual
 # MeteoApp — Dashboard Meteorológico Personal
 
@@ -251,7 +251,7 @@ class HomeView:
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     def _refresh_dropdown(self, update: bool = False) -> None:
-        df = get_cities()
+        df = get_cities(self.username)
         self._dropdown.options = [
             ft.dropdown.Option(str(row["ciudad"])) for _, row in df.iterrows()
         ]
@@ -278,7 +278,7 @@ class HomeView:
         options = search_cities(city, count=5)
         if not options:
             # Sin resultado: puede ser falta de internet → intentar cache
-            cached = get_weather_cache(city)
+            cached = get_weather_cache(city, self.username)
             if cached is not None:
                 self._show_offline_weather(cached)
                 return
@@ -315,7 +315,7 @@ class HomeView:
         )
         self._offline_banner.visible = True
 
-        fav_df = get_cities()
+        fav_df = get_cities(self.username)
         is_fav = not fav_df[fav_df["ciudad"].str.lower() == cached["ciudad"].lower()].empty
         self._save_checkbox.value = is_fav
         self._save_checkbox.disabled = True  # no se puede modificar sin conexión
@@ -347,7 +347,7 @@ class HomeView:
         self._weather_card.visible = True
 
     def _check_alert(self, data: dict) -> None:
-        fav_df = get_cities()
+        fav_df = get_cities(self.username)
         match = fav_df[fav_df["ciudad"].str.lower() == data["ciudad"].lower()]
         if match.empty:
             self._alert_banner.visible = False
@@ -393,6 +393,7 @@ class HomeView:
             return
         if e.control.value:
             add_city(
+                self.username,
                 self._weather_data["ciudad"],
                 self._weather_data["pais"],
                 self._weather_data["latitud"],
@@ -461,7 +462,7 @@ class HomeView:
         data = get_current_weather_from_geo(geo)
         if data is None:
             # Sin conexión: intentar cache por nombre de ciudad
-            cached = get_weather_cache(geo.get("name", ""))
+            cached = get_weather_cache(geo.get("name", ""), self.username)
             if cached is not None:
                 self._show_offline_weather(cached)
                 return
@@ -471,14 +472,14 @@ class HomeView:
             return
 
         # Éxito: guardar en cache y ocultar banner offline
-        save_weather_cache(data)
+        save_weather_cache(data, self.username)
         self._offline_banner.visible = False
         self._weather_data = data
         self._msg.value = ""
         self._display_weather(data)
         self._check_alert(data)
 
-        fav_df = get_cities()
+        fav_df = get_cities(self.username)
         is_fav = not fav_df[fav_df["ciudad"].str.lower() == data["ciudad"].lower()].empty
         self._save_checkbox.value = is_fav
         self._save_checkbox.disabled = False
