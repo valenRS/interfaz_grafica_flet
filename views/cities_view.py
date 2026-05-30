@@ -8,6 +8,7 @@ from typing import Callable
 
 import flet as ft
 
+import utils.settings as settings
 from utils.api_client import geocode_city
 from utils.data_manager import add_city, delete_city, get_cities
 
@@ -72,7 +73,35 @@ class CitiesView:
             ),
         )
 
+        _btn_style = ft.ButtonStyle(
+            color="#FFFFFF",
+            side=ft.BorderSide(color="#90CAF9", width=1),
+            padding=ft.padding.symmetric(horizontal=10, vertical=4),
+        )
+        self._hdr_btn_temp_unit = ft.OutlinedButton(
+            text=settings.temp_symbol(),
+            on_click=self._toggle_temp,
+            style=_btn_style,
+            height=28,
+        )
+        self._hdr_btn_speed_unit = ft.OutlinedButton(
+            text=settings.speed_symbol(),
+            on_click=self._toggle_speed,
+            style=_btn_style,
+            height=28,
+        )
+
     # ── Helpers ───────────────────────────────────────────────────────────────
+
+    def _toggle_temp(self, e: ft.ControlEvent) -> None:
+        settings.set_temp_unit("F" if settings.get_temp_unit() == "C" else "C")
+        self._hdr_btn_temp_unit.text = settings.temp_symbol()
+        self.page.update()
+
+    def _toggle_speed(self, e: ft.ControlEvent) -> None:
+        settings.set_speed_unit("mph" if settings.get_speed_unit() == "kmh" else "kmh")
+        self._hdr_btn_speed_unit.text = settings.speed_symbol()
+        self.page.update()
 
     def _refresh_list(self) -> None:
         df = get_cities(self.username)
@@ -181,6 +210,8 @@ class CitiesView:
                         color="#FFFFFF",
                     ),
                     ft.Container(expand=True),
+                    self._hdr_btn_temp_unit,
+                    self._hdr_btn_speed_unit,
                     self._count_lbl,
                 ],
             ),

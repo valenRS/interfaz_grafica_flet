@@ -107,7 +107,39 @@ class AlertsView:
 
         self._summary_column = ft.Column(spacing=8)
 
+        _btn_style = ft.ButtonStyle(
+            color="#FFFFFF",
+            side=ft.BorderSide(color="#90CAF9", width=1),
+            padding=ft.padding.symmetric(horizontal=10, vertical=4),
+        )
+        self._hdr_btn_temp_unit = ft.OutlinedButton(
+            text=settings.temp_symbol(),
+            on_click=self._toggle_temp,
+            style=_btn_style,
+            height=28,
+        )
+        self._hdr_btn_speed_unit = ft.OutlinedButton(
+            text=settings.speed_symbol(),
+            on_click=self._toggle_speed,
+            style=_btn_style,
+            height=28,
+        )
+
     # ── Helpers ───────────────────────────────────────────────────────────────
+
+    def _toggle_temp(self, e: ft.ControlEvent) -> None:
+        settings.set_temp_unit("F" if settings.get_temp_unit() == "C" else "C")
+        self._hdr_btn_temp_unit.text = settings.temp_symbol()
+        sym = settings.temp_symbol()
+        self._max_val_lbl.value = f"{settings.convert_temp(self._max_val):.0f}{sym}"
+        self._min_val_lbl.value = f"{settings.convert_temp(self._min_val):.0f}{sym}"
+        self._refresh_summary()
+        self.page.update()
+
+    def _toggle_speed(self, e: ft.ControlEvent) -> None:
+        settings.set_speed_unit("mph" if settings.get_speed_unit() == "kmh" else "kmh")
+        self._hdr_btn_speed_unit.text = settings.speed_symbol()
+        self.page.update()
 
     def _refresh_dropdown(self) -> None:
         df = get_cities(self.username)
@@ -268,6 +300,9 @@ class AlertsView:
                         weight=ft.FontWeight.BOLD,
                         color="#FFFFFF",
                     ),
+                    ft.Container(expand=True),
+                    self._hdr_btn_temp_unit,
+                    self._hdr_btn_speed_unit,
                 ],
             ),
         )

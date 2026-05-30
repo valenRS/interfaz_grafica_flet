@@ -200,7 +200,53 @@ class HistoryView:
         )
         page.overlay.append(self._date_picker)
 
+        _btn_style = ft.ButtonStyle(
+            color="#FFFFFF",
+            side=ft.BorderSide(color="#90CAF9", width=1),
+            padding=ft.padding.symmetric(horizontal=10, vertical=4),
+        )
+        self._hdr_btn_temp_unit = ft.OutlinedButton(
+            text=settings.temp_symbol(),
+            on_click=self._toggle_temp,
+            style=_btn_style,
+            height=28,
+        )
+        self._hdr_btn_speed_unit = ft.OutlinedButton(
+            text=settings.speed_symbol(),
+            on_click=self._toggle_speed,
+            style=_btn_style,
+            height=28,
+        )
+
+        self._current_avg_max: float | None = None
+        self._current_avg_min: float | None = None
+
     # ── Helpers ───────────────────────────────────────────────────────────────
+
+    def _toggle_temp(self, e: ft.ControlEvent) -> None:
+        settings.set_temp_unit("F" if settings.get_temp_unit() == "C" else "C")
+        self._hdr_btn_temp_unit.text = settings.temp_symbol()
+
+        # Update stats if loaded
+        if self._current_avg_max is not None and self._current_avg_min is not None:
+            sym = settings.temp_symbol()
+            def _fmt_temp(val: float) -> str:
+                if val is None or (isinstance(val, float) and math.isnan(val)):
+                    return "—"
+                converted = settings.convert_temp(val)
+                if converted is None or (isinstance(converted, float) and math.isnan(converted)):
+                    return "—"
+                return f"{converted:.1f}{sym}"
+            
+            self._stat_avg_max.value = _fmt_temp(self._current_avg_max)
+            self._stat_avg_min.value = _fmt_temp(self._current_avg_min)
+
+        self.page.update()
+
+    def _toggle_speed(self, e: ft.ControlEvent) -> None:
+        settings.set_speed_unit("mph" if settings.get_speed_unit() == "kmh" else "kmh")
+        self._hdr_btn_speed_unit.text = settings.speed_symbol()
+        self.page.update()
 
     def _refresh_dropdown(self) -> None:
         df = get_cities(self.username)
@@ -293,6 +339,8 @@ class HistoryView:
                     return "—"
                 return f"{converted:.1f}{sym}"
 
+            self._current_avg_max = avg_max
+            self._current_avg_min = avg_min
             self._stat_avg_max.value    = _fmt_temp(avg_max)
             self._stat_avg_min.value    = _fmt_temp(avg_min)
             self._stat_avg_prec.value   = f"{prec.mean():.1f} mm"
@@ -342,6 +390,9 @@ class HistoryView:
                         weight=ft.FontWeight.BOLD,
                         color="#FFFFFF",
                     ),
+                    ft.Container(expand=True),
+                    self._hdr_btn_temp_unit,
+                    self._hdr_btn_speed_unit,
                 ],
             ),
         )
