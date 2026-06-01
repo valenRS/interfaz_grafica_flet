@@ -69,6 +69,7 @@ class AlertsView:
             active_color="#FF7043",
             inactive_color="#1565C0",
             expand=True,
+            disabled=True,
         )
 
         self._min_slider = ft.Slider(
@@ -80,6 +81,7 @@ class AlertsView:
             active_color="#29B6F6",
             inactive_color="#1565C0",
             expand=True,
+            disabled=True,
         )
 
         # ── Controles: checkbox y botón ───────────────────────────────────────
@@ -150,6 +152,9 @@ class AlertsView:
     def _on_city_select(self, e: ft.ControlEvent) -> None:
         city_name = e.control.value
         if not city_name:
+            self._max_slider.disabled = True
+            self._min_slider.disabled = True
+            self.page.update()
             return
 
         df = get_cities(self.username)
@@ -175,6 +180,8 @@ class AlertsView:
 
         self._max_slider.value = self._max_val
         self._min_slider.value = self._min_val
+        self._max_slider.disabled = False
+        self._min_slider.disabled = False
         sym = settings.temp_symbol()
         self._max_val_lbl.value = f"{settings.convert_temp(self._max_val):.0f}{sym}"
         self._min_val_lbl.value = f"{settings.convert_temp(self._min_val):.0f}{sym}"

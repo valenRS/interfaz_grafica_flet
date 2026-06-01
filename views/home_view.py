@@ -155,14 +155,6 @@ class HomeView:
             expand=True,
         )
 
-        self._save_checkbox = ft.Checkbox(
-            label="Guardar como favorita",
-            value=False,
-            disabled=True,
-            on_change=self._on_save_toggle,
-            label_style=ft.TextStyle(color="#FFFFFF"),
-        )
-
         self._search_btn = ft.ElevatedButton(
             text="Buscar",
             icon=ft.Icons.SEARCH,
@@ -302,7 +294,6 @@ class HomeView:
             self._weather_card.visible = False
             self._alert_banner.visible = False
             self._offline_banner.visible = False
-            self._save_checkbox.disabled = True
             self.page.update()
             return
 
@@ -331,8 +322,6 @@ class HomeView:
 
         fav_df = get_cities(self.username)
         is_fav = not fav_df[fav_df["ciudad"].str.lower() == cached["ciudad"].lower()].empty
-        self._save_checkbox.value = is_fav
-        self._save_checkbox.disabled = True  # no se puede modificar sin conexión
         self._msg.value = ""
         self.page.update()
 
@@ -401,19 +390,6 @@ class HomeView:
 
         self._alert_text.value = msg
         self._alert_banner.visible = bool(msg)
-
-    def _on_save_toggle(self, e: ft.ControlEvent) -> None:
-        if self._weather_data is None:
-            return
-        if e.control.value:
-            add_city(
-                self.username,
-                self._weather_data["ciudad"],
-                self._weather_data["pais"],
-                self._weather_data["latitud"],
-                self._weather_data["longitud"],
-            )
-            self._refresh_dropdown(update=True)
 
     # ── Unidades de medida ─────────────────────────────────────────────────────
 
@@ -501,9 +477,36 @@ class HomeView:
 
         fav_df = get_cities(self.username)
         is_fav = not fav_df[fav_df["ciudad"].str.lower() == data["ciudad"].lower()].empty
-        self._save_checkbox.value = is_fav
-        self._save_checkbox.disabled = False
         self.page.update()
+        
+        if not is_fav:
+            def on_yes(e):
+                add_city(
+                    self.username,
+                    data["ciudad"],
+                    data["pais"],
+                    data["latitud"],
+                    data["longitud"],
+                )
+                self._refresh_dropdown(update=True)
+                self.page.close(self._fav_dlg)
+                self.page.update()
+                
+            def on_no(e):
+                self.page.close(self._fav_dlg)
+                self.page.update()
+            
+            self._fav_dlg = ft.AlertDialog(
+                modal=True,
+                title=ft.Text("Agregar a favoritas", color="#FFFFFF", weight=ft.FontWeight.BOLD),
+                bgcolor="#0D47A1",
+                content=ft.Text(f"¿Desea agregar la ciudad {data['ciudad']} como favorita?", color="#E3F2FD"),
+                actions=[
+                    ft.TextButton("Sí", on_click=on_yes, style=ft.ButtonStyle(color="#A5D6A7")),
+                    ft.TextButton("No", on_click=on_no, style=ft.ButtonStyle(color="#EF9A9A")),
+                ],
+            )
+            self.page.open(self._fav_dlg)
 
     def _close_dialog(self) -> None:
         if self._dlg is not None:
@@ -625,7 +628,6 @@ class HomeView:
                         controls=[self._city_input, self._search_btn],
                     ),
                     self._dropdown,
-                    self._save_checkbox,
                     self._msg,
                 ],
             ),
