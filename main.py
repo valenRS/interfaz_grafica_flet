@@ -25,14 +25,14 @@ def main(page: ft.Page) -> None:
     page.theme = ft.Theme(font_family="Roboto")
 
     # Referencia al DatePicker activo de HistoryView (para limpiarlo al navegar)
-    _active_date_picker: list[ft.DatePicker] = []
+    _selector_fecha_activo: list[ft.DatePicker] = []
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
-    def _clear_page() -> None:
+    def _limpiar_pagina() -> None:
         """Limpia controles y el overlay del DatePicker si hay uno activo."""
-        if _active_date_picker:
-            dp = _active_date_picker.pop()
+        if _selector_fecha_activo:
+            dp = _selector_fecha_activo.pop()
             try:
                 page.overlay.remove(dp)
             except ValueError:
@@ -41,59 +41,59 @@ def main(page: ft.Page) -> None:
 
     # ── Vistas ────────────────────────────────────────────────────────────────
 
-    def show_login() -> None:
-        _clear_page()
-        view = LoginView(page, on_login_success=show_home)
+    def mostrar_inicio_sesion() -> None:
+        _limpiar_pagina()
+        view = LoginView(page, on_login_success=mostrar_inicio)
         page.add(view.build())
 
-    def show_home(username: str) -> None:
-        _clear_page()
+    def mostrar_inicio(username: str) -> None:
+        _limpiar_pagina()
         view = HomeView(
             page,
             username,
-            on_go_history=lambda: show_history(username),
-            on_go_cities=lambda: show_cities(username),
-            on_go_alerts=lambda: show_alerts(username),
-            on_logout=show_login,
+            on_go_history=lambda: mostrar_historial(username),
+            on_go_cities=lambda: mostrar_ciudades(username),
+            on_go_alerts=lambda: mostrar_alertas(username),
+            on_logout=mostrar_inicio_sesion,
         )
         page.add(view.build())
 
-    def show_history(username: str) -> None:
-        _clear_page()
+    def mostrar_historial(username: str) -> None:
+        _limpiar_pagina()
         view = HistoryView(
             page,
             username,
-            on_go_home=lambda: show_home(username),
+            on_go_home=lambda: mostrar_inicio(username),
         )
         # HistoryView agrega su DatePicker al overlay en __init__;
         # lo registramos para poder limpiarlo al navegar.
         if page.overlay:
             for ctrl in reversed(page.overlay):
                 if isinstance(ctrl, ft.DatePicker):
-                    _active_date_picker.append(ctrl)
+                    _selector_fecha_activo.append(ctrl)
                     break
         page.add(view.build())
 
-    def show_cities(username: str) -> None:
-        _clear_page()
+    def mostrar_ciudades(username: str) -> None:
+        _limpiar_pagina()
         view = CitiesView(
             page,
             username,
-            on_go_home=lambda: show_home(username),
+            on_go_home=lambda: mostrar_inicio(username),
         )
         page.add(view.build())
 
-    def show_alerts(username: str) -> None:
-        _clear_page()
+    def mostrar_alertas(username: str) -> None:
+        _limpiar_pagina()
         view = AlertsView(
             page,
             username,
-            on_go_home=lambda: show_home(username),
+            on_go_home=lambda: mostrar_inicio(username),
         )
         page.add(view.build())
 
     # ── Inicio ────────────────────────────────────────────────────────────────
-    show_login()
+    mostrar_inicio_sesion()
 
 
 if __name__ == "__main__":

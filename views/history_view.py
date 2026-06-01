@@ -14,14 +14,14 @@ import flet as ft
 import pandas as pd
 
 import utils.settings as settings
-from utils.api_client import get_historical
+from utils.api_client import obtener_historial
 from utils.chart_generator import chart_precipitacion, chart_temperatura
-from utils.data_manager import get_cities, get_history, save_history
+from utils.data_manager import obtener_ciudades, obtener_historial_cache, guardar_historial
 
 # ── Helper ────────────────────────────────────────────────────────────────────
 
 
-def _file_to_b64(path: str) -> str:
+def _archivo_a_base64(path: str) -> str:
     with open(path, "rb") as f:
         return base64.b64encode(f.read()).decode()
 
@@ -41,12 +41,12 @@ class HistoryView:
         self.username = username
         self.on_go_home = on_go_home
 
-        self._start_date: datetime = datetime.today() - timedelta(days=30)
-        self._days: int = 30
+        self._fecha_inicio: datetime = datetime.today() - timedelta(days=30)
+        self._dias_consulta: int = 30
 
         # ── Controles: selección ─────────────────────────────────────────────
 
-        self._city_dropdown = ft.Dropdown(
+        self._lista_ciudades = ft.Dropdown(
             label="Ciudad",
             hint_text="Seleccionar ciudad favorita",
             options=[],
@@ -59,10 +59,10 @@ class HistoryView:
             width=260,
         )
 
-        self._date_btn = ft.ElevatedButton(
-            text=self._start_date.strftime("%d/%m/%Y"),
+        self._boton_fecha = ft.ElevatedButton(
+            text=self._fecha_inicio.strftime("%d/%m/%Y"),
             icon=ft.Icons.CALENDAR_TODAY,
-            on_click=self._open_date_picker,
+            on_click=self._abrir_selector_fecha,
             style=ft.ButtonStyle(
                 bgcolor="#0D47A1",
                 color="#FFFFFF",
@@ -70,24 +70,24 @@ class HistoryView:
             ),
         )
 
-        self._days_lbl = ft.Text(f"{self._days} días", color="#FFFFFF", size=14,
+        self._etiqueta_dias = ft.Text(f"{self._dias_consulta} días", color="#FFFFFF", size=14,
                                  weight=ft.FontWeight.W_500)
 
-        self._slider = ft.Slider(
+        self._deslizador_dias = ft.Slider(
             min=7,
             max=90,
-            value=self._days,
+            value=self._dias_consulta,
             divisions=83,
-            on_change=self._on_slider_change,
+            on_change=self._al_mover_deslizador_dias,
             active_color="#29B6F6",
             inactive_color="#1565C0",
             expand=True,
         )
 
-        self._consult_btn = ft.ElevatedButton(
+        self._boton_consultar = ft.ElevatedButton(
             text="Consultar historial",
             icon=ft.Icons.SEARCH,
-            on_click=self._on_consult,
+            on_click=self._al_consultar_historial,
             style=ft.ButtonStyle(
                 bgcolor="#29B6F6",
                 color="#FFFFFF",
@@ -95,40 +95,40 @@ class HistoryView:
             ),
         )
 
-        self._loading = ft.ProgressRing(width=30, height=30, stroke_width=4, visible=False)
-        self._msg = ft.Text("", size=13, color="#EF9A9A")
+        self._indicador_carga = ft.ProgressRing(width=30, height=30, stroke_width=4, visible=False)
+        self._mensaje_estado = ft.Text("", size=13, color="#EF9A9A")
 
         # ── Controles: gráficas ───────────────────────────────────────────────
 
-        self._chart_temp = ft.Image(
+        self._imagen_grafica_temp = ft.Image(
             height=250,
             fit=ft.ImageFit.CONTAIN,
             visible=False,
             expand=True,
         )
-        self._chart_prec = ft.Image(
+        self._imagen_grafica_precip = ft.Image(
             height=250,
             fit=ft.ImageFit.CONTAIN,
             visible=False,
             expand=True,
         )
-        self._chart_label_temp = ft.Text(
+        self._etiqueta_grafica_temp = ft.Text(
             "Temperatura (°C)", size=13, color="#90CAF9",
             weight=ft.FontWeight.W_500, visible=False,
         )
-        self._chart_label_prec = ft.Text(
+        self._etiqueta_grafica_precip = ft.Text(
             "Precipitación acumulada (mm)", size=13, color="#90CAF9",
             weight=ft.FontWeight.W_500, visible=False,
         )
 
         # ── Controles: estadísticas ──────────────────────────────────────────
 
-        self._stat_avg_max    = ft.Text("—", size=20, weight=ft.FontWeight.BOLD, color="#EF5350")
-        self._stat_avg_min    = ft.Text("—", size=20, weight=ft.FontWeight.BOLD, color="#42A5F5")
-        self._stat_avg_prec   = ft.Text("—", size=20, weight=ft.FontWeight.BOLD, color="#29B6F6")
-        self._stat_total_prec = ft.Text("—", size=20, weight=ft.FontWeight.BOLD, color="#0288D1")
+        self._est_promedio_max    = ft.Text("—", size=20, weight=ft.FontWeight.BOLD, color="#EF5350")
+        self._est_promedio_min    = ft.Text("—", size=20, weight=ft.FontWeight.BOLD, color="#42A5F5")
+        self._est_promedio_lluvia   = ft.Text("—", size=20, weight=ft.FontWeight.BOLD, color="#29B6F6")
+        self._est_total_lluvia = ft.Text("—", size=20, weight=ft.FontWeight.BOLD, color="#0288D1")
 
-        self._stats_temp_panel = ft.Container(
+        self._panel_estadisticas_temp = ft.Container(
             visible=False,
             bgcolor="#0D47A1",
             border_radius=12,
@@ -145,7 +145,7 @@ class HistoryView:
                         spacing=2,
                         controls=[
                             ft.Text("Prom. máxima", size=11, color="#FFCC80"),
-                            self._stat_avg_max,
+                            self._est_promedio_max,
                         ],
                     ),
                     ft.Column(
@@ -153,14 +153,14 @@ class HistoryView:
                         spacing=2,
                         controls=[
                             ft.Text("Prom. mínima", size=11, color="#80D8FF"),
-                            self._stat_avg_min,
+                            self._est_promedio_min,
                         ],
                     ),
                 ],
             ),
         )
 
-        self._stats_prec_panel = ft.Container(
+        self._panel_estadisticas_lluvia = ft.Container(
             visible=False,
             bgcolor="#0D47A1",
             border_radius=12,
@@ -177,7 +177,7 @@ class HistoryView:
                         spacing=2,
                         controls=[
                             ft.Text("Prom. diaria", size=11, color="#90CAF9"),
-                            self._stat_avg_prec,
+                            self._est_promedio_lluvia,
                         ],
                     ),
                     ft.Column(
@@ -185,7 +185,7 @@ class HistoryView:
                         spacing=2,
                         controls=[
                             ft.Text("Total período", size=11, color="#90CAF9"),
-                            self._stat_total_prec,
+                            self._est_total_lluvia,
                         ],
                     ),
                 ],
@@ -193,114 +193,114 @@ class HistoryView:
         )
 
         # DatePicker — rango limitado a 91 días atrás (tope del endpoint de forecast)
-        self._date_picker = ft.DatePicker(
+        self._selector_fecha = ft.DatePicker(
             first_date=datetime.today() - timedelta(days=91),
             last_date=datetime.today() - timedelta(days=1),
-            on_change=self._on_date_change,
+            on_change=self._al_cambiar_fecha,
         )
-        page.overlay.append(self._date_picker)
+        page.overlay.append(self._selector_fecha)
 
         _btn_style = ft.ButtonStyle(
             color="#FFFFFF",
             side=ft.BorderSide(color="#90CAF9", width=1),
             padding=ft.padding.symmetric(horizontal=10, vertical=4),
         )
-        self._hdr_btn_temp_unit = ft.OutlinedButton(
-            text=settings.temp_symbol(),
-            on_click=self._toggle_temp,
+        self._boton_cabecera_unidad_temp = ft.OutlinedButton(
+            text=settings.simbolo_temperatura(),
+            on_click=self._cambiar_unidad_temperatura,
             style=_btn_style,
             height=28,
         )
-        self._hdr_btn_speed_unit = ft.OutlinedButton(
-            text=settings.speed_symbol(),
-            on_click=self._toggle_speed,
+        self._boton_cabecera_unidad_vel = ft.OutlinedButton(
+            text=settings.simbolo_velocidad(),
+            on_click=self._cambiar_unidad_velocidad,
             style=_btn_style,
             height=28,
         )
 
-        self._current_avg_max: float | None = None
-        self._current_avg_min: float | None = None
+        self._promedio_max_actual: float | None = None
+        self._promedio_min_actual: float | None = None
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
-    def _toggle_temp(self, e: ft.ControlEvent) -> None:
-        settings.set_temp_unit("F" if settings.get_temp_unit() == "C" else "C")
-        self._hdr_btn_temp_unit.text = settings.temp_symbol()
+    def _cambiar_unidad_temperatura(self, e: ft.ControlEvent) -> None:
+        settings.establecer_unidad_temperatura("F" if settings.obtener_unidad_temperatura() == "C" else "C")
+        self._boton_cabecera_unidad_temp.text = settings.simbolo_temperatura()
 
         # Update stats if loaded
-        if self._current_avg_max is not None and self._current_avg_min is not None:
-            sym = settings.temp_symbol()
-            def _fmt_temp(val: float) -> str:
+        if self._promedio_max_actual is not None and self._promedio_min_actual is not None:
+            sym = settings.simbolo_temperatura()
+            def _formatear_temperatura(val: float) -> str:
                 if val is None or (isinstance(val, float) and math.isnan(val)):
                     return "—"
-                converted = settings.convert_temp(val)
+                converted = settings.convertir_temperatura(val)
                 if converted is None or (isinstance(converted, float) and math.isnan(converted)):
                     return "—"
                 return f"{converted:.1f}{sym}"
             
-            self._stat_avg_max.value = _fmt_temp(self._current_avg_max)
-            self._stat_avg_min.value = _fmt_temp(self._current_avg_min)
+            self._est_promedio_max.value = _formatear_temperatura(self._promedio_max_actual)
+            self._est_promedio_min.value = _formatear_temperatura(self._promedio_min_actual)
 
         self.page.update()
 
-    def _toggle_speed(self, e: ft.ControlEvent) -> None:
-        settings.set_speed_unit("mph" if settings.get_speed_unit() == "kmh" else "kmh")
-        self._hdr_btn_speed_unit.text = settings.speed_symbol()
+    def _cambiar_unidad_velocidad(self, e: ft.ControlEvent) -> None:
+        settings.establecer_unidad_velocidad("mph" if settings.obtener_unidad_velocidad() == "kmh" else "kmh")
+        self._boton_cabecera_unidad_vel.text = settings.simbolo_velocidad()
         self.page.update()
 
-    def _refresh_dropdown(self) -> None:
-        df = get_cities(self.username)
-        self._city_dropdown.options = [
+    def _actualizar_lista_ciudades(self) -> None:
+        df = obtener_ciudades(self.username)
+        self._lista_ciudades.options = [
             ft.dropdown.Option(str(row["ciudad"])) for _, row in df.iterrows()
         ]
 
-    def _open_date_picker(self, e: ft.ControlEvent) -> None:
-        self._date_picker.open = True
+    def _abrir_selector_fecha(self, e: ft.ControlEvent) -> None:
+        self._selector_fecha.open = True
         self.page.update()
 
-    def _on_date_change(self, e: ft.ControlEvent) -> None:
+    def _al_cambiar_fecha(self, e: ft.ControlEvent) -> None:
         if e.control.value:
-            self._start_date = e.control.value
-            self._date_btn.text = self._start_date.strftime("%d/%m/%Y")
+            self._fecha_inicio = e.control.value
+            self._boton_fecha.text = self._fecha_inicio.strftime("%d/%m/%Y")
             self.page.update()
 
-    def _on_slider_change(self, e: ft.ControlEvent) -> None:
-        self._days = int(e.control.value)
-        self._days_lbl.value = f"{self._days} días"
+    def _al_mover_deslizador_dias(self, e: ft.ControlEvent) -> None:
+        self._dias_consulta = int(e.control.value)
+        self._etiqueta_dias.value = f"{self._dias_consulta} días"
         self.page.update()
 
-    def _on_consult(self, e: ft.ControlEvent) -> None:
-        city = self._city_dropdown.value
+    def _al_consultar_historial(self, e: ft.ControlEvent) -> None:
+        city = self._lista_ciudades.value
         if not city:
-            self._msg.value = "Selecciona una ciudad."
+            self._mensaje_estado.value = "Selecciona una ciudad."
             self.page.update()
             return
-        self._msg.value = ""
-        self._show_loading(True)
-        threading.Thread(target=self._load_data, args=(city,), daemon=True).start()
+        self._mensaje_estado.value = ""
+        self._mostrar_cargando(True)
+        threading.Thread(target=self._cargar_datos_historial, args=(city,), daemon=True).start()
 
-    def _load_data(self, city: str) -> None:
+    def _cargar_datos_historial(self, city: str) -> None:
         try:
             yesterday = datetime.today() - timedelta(days=1)
-            fin_dt = min(self._start_date + timedelta(days=self._days - 1), yesterday)
-            inicio_str = self._start_date.strftime("%Y-%m-%d")
+            fin_dt = min(self._fecha_inicio + timedelta(days=self._dias_consulta - 1), yesterday)
+            inicio_str = self._fecha_inicio.strftime("%Y-%m-%d")
             fin_str    = fin_dt.strftime("%Y-%m-%d")
-            expected   = (fin_dt - self._start_date).days + 1
+            expected   = (fin_dt - self._fecha_inicio).days + 1
 
             # Intentar cache local primero
-            cached = get_history(city, inicio_str, fin_str)
+            cached = obtener_historial_cache(city, inicio_str, fin_str)
             if not cached.empty and len(cached) >= int(expected * 0.9):
                 df = cached
             else:
-                cities_df = get_cities(self.username)
+                cities_df = obtener_ciudades(self.username)
                 match = cities_df[cities_df["ciudad"].str.lower() == city.lower()]
                 if match.empty:
-                    self._msg.value = "Coordenadas no encontradas. Agrega la ciudad a favoritas primero."
-                    self._show_loading(False)
+                    self._mensaje_estado.value = "Coordenadas no encontradas. Agrega la ciudad a favoritas primero."
+                    self._mostrar_cargando(False)
                     return
 
                 row = match.iloc[0]
-                df = get_historical(
+                df = obtener_historial(
                     city,
                     float(row["latitud"]),
                     float(row["longitud"]),
@@ -308,68 +308,68 @@ class HistoryView:
                     fin_str,
                 )
                 if df is None or df.empty:
-                    self._msg.value = "No se encontraron datos para ese período."
-                    self._show_loading(False)
+                    self._mensaje_estado.value = "No se encontraron datos para ese período."
+                    self._mostrar_cargando(False)
                     return
-                save_history(df)
+                guardar_historial(df)
 
             # Generar gráficas
             path_temp = chart_temperatura(df, city)
             path_prec = chart_precipitacion(df, city)
 
-            self._chart_temp.src_base64 = _file_to_b64(path_temp)
-            self._chart_prec.src_base64 = _file_to_b64(path_prec)
-            self._chart_temp.visible = True
-            self._chart_prec.visible = True
-            self._chart_label_temp.visible = True
-            self._chart_label_prec.visible = True
+            self._imagen_grafica_temp.src_base64 = _archivo_a_base64(path_temp)
+            self._imagen_grafica_precip.src_base64 = _archivo_a_base64(path_prec)
+            self._imagen_grafica_temp.visible = True
+            self._imagen_grafica_precip.visible = True
+            self._etiqueta_grafica_temp.visible = True
+            self._etiqueta_grafica_precip.visible = True
 
             # Calcular estadísticas del período
-            sym      = settings.temp_symbol()
+            sym      = settings.simbolo_temperatura()
             avg_max  = df["temp_max"].astype(float).mean()
             avg_min  = df["temp_min"].astype(float).mean()
             prec     = df["precipitacion"].astype(float).fillna(0)
 
-            def _fmt_temp(val: float) -> str:
+            def _formatear_temperatura(val: float) -> str:
                 """Convierte y formatea una temperatura; devuelve '—' si es NaN/None."""
                 if val is None or (isinstance(val, float) and math.isnan(val)):
                     return "—"
-                converted = settings.convert_temp(val)
+                converted = settings.convertir_temperatura(val)
                 if converted is None or (isinstance(converted, float) and math.isnan(converted)):
                     return "—"
                 return f"{converted:.1f}{sym}"
 
-            self._current_avg_max = avg_max
-            self._current_avg_min = avg_min
-            self._stat_avg_max.value    = _fmt_temp(avg_max)
-            self._stat_avg_min.value    = _fmt_temp(avg_min)
-            self._stat_avg_prec.value   = f"{prec.mean():.1f} mm"
-            self._stat_total_prec.value = f"{prec.sum():.1f} mm"
-            self._stats_temp_panel.visible = True
-            self._stats_prec_panel.visible = True
+            self._promedio_max_actual = avg_max
+            self._promedio_min_actual = avg_min
+            self._est_promedio_max.value    = _formatear_temperatura(avg_max)
+            self._est_promedio_min.value    = _formatear_temperatura(avg_min)
+            self._est_promedio_lluvia.value   = f"{prec.mean():.1f} mm"
+            self._est_total_lluvia.value = f"{prec.sum():.1f} mm"
+            self._panel_estadisticas_temp.visible = True
+            self._panel_estadisticas_lluvia.visible = True
 
-            self._msg.value = f"Mostrando {len(df)} días para {city}."
-            self._msg.color = "#A5D6A7"
+            self._mensaje_estado.value = f"Mostrando {len(df)} días para {city}."
+            self._mensaje_estado.color = "#A5D6A7"
 
         except Exception as exc:  # noqa: BLE001
             import traceback
             with open("error_log.txt", "a") as f:
                 f.write(traceback.format_exc() + "\\n")
-            self._msg.value = f"Error al cargar datos: {exc}"
-            self._msg.color = "#EF9A9A"
+            self._mensaje_estado.value = f"Error al cargar datos: {exc}"
+            self._mensaje_estado.color = "#EF9A9A"
 
         finally:
-            self._show_loading(False)
+            self._mostrar_cargando(False)
 
-    def _show_loading(self, val: bool) -> None:
-        self._loading.visible = val
-        self._consult_btn.disabled = val
+    def _mostrar_cargando(self, val: bool) -> None:
+        self._indicador_carga.visible = val
+        self._boton_consultar.disabled = val
         self.page.update()
 
     # ── Build ─────────────────────────────────────────────────────────────────
 
     def build(self) -> ft.Control:
-        self._refresh_dropdown()
+        self._actualizar_lista_ciudades()
 
         header = ft.Container(
             bgcolor="#0D47A1",
@@ -391,8 +391,8 @@ class HistoryView:
                         color="#FFFFFF",
                     ),
                     ft.Container(expand=True),
-                    self._hdr_btn_temp_unit,
-                    self._hdr_btn_speed_unit,
+                    self._boton_cabecera_unidad_temp,
+                    self._boton_cabecera_unidad_vel,
                 ],
             ),
         )
@@ -408,12 +408,12 @@ class HistoryView:
                         wrap=True,
                         spacing=20,
                         controls=[
-                            self._city_dropdown,
+                            self._lista_ciudades,
                             ft.Column(
                                 spacing=4,
                                 controls=[
                                     ft.Text("Fecha de inicio", size=12, color="#90CAF9"),
-                                    self._date_btn,
+                                    self._boton_fecha,
                                 ],
                             ),
                         ],
@@ -422,16 +422,16 @@ class HistoryView:
                         spacing=12,
                         controls=[
                             ft.Text("Días a consultar:", size=13, color="#90CAF9"),
-                            self._days_lbl,
+                            self._etiqueta_dias,
                         ],
                     ),
-                    ft.Row(controls=[self._slider]),
+                    ft.Row(controls=[self._deslizador_dias]),
                     ft.Row(
                         spacing=16,
-                        controls=[self._consult_btn, self._loading],
+                        controls=[self._boton_consultar, self._indicador_carga],
                         vertical_alignment=ft.CrossAxisAlignment.CENTER,
                     ),
-                    self._msg,
+                    self._mensaje_estado,
                 ],
             ),
         )
@@ -452,13 +452,13 @@ class HistoryView:
                             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                             controls=[
                                 controls_panel,
-                                self._chart_label_temp,
+                                self._etiqueta_grafica_temp,
                                 ft.Row(
                                     spacing=12,
                                     vertical_alignment=ft.CrossAxisAlignment.START,
                                     controls=[
                                         ft.Container(
-                                            content=self._chart_temp,
+                                            content=self._imagen_grafica_temp,
                                             bgcolor="#0D47A1",
                                             border_radius=12,
                                             padding=ft.padding.all(12),
@@ -466,16 +466,16 @@ class HistoryView:
                                                                 offset=ft.Offset(0, 4)),
                                             expand=True,
                                         ),
-                                        self._stats_temp_panel,
+                                        self._panel_estadisticas_temp,
                                     ],
                                 ),
-                                self._chart_label_prec,
+                                self._etiqueta_grafica_precip,
                                 ft.Row(
                                     spacing=12,
                                     vertical_alignment=ft.CrossAxisAlignment.START,
                                     controls=[
                                         ft.Container(
-                                            content=self._chart_prec,
+                                            content=self._imagen_grafica_precip,
                                             bgcolor="#0D47A1",
                                             border_radius=12,
                                             padding=ft.padding.all(12),
@@ -483,7 +483,7 @@ class HistoryView:
                                                                 offset=ft.Offset(0, 4)),
                                             expand=True,
                                         ),
-                                        self._stats_prec_panel,
+                                        self._panel_estadisticas_lluvia,
                                     ],
                                 ),
                             ],

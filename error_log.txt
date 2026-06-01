@@ -43,4 +43,12 @@ Traceback (most recent call last):
     ...<4 lines>...
             type_name(type(v))))
 TypeError: 'value' must be an instance of str or bytes, not a float
+\nTraceback (most recent call last):
+  File "/home/saantigh/interfaz_grafica_flet/views/history_view.py", line 303, in _cargar_datos_historial
+    df = obtener_historial(
+        city,
+    ...<3 lines>...
+        fin_str,
+    )
+TypeError: obtener_historial() takes 3 positional arguments but 5 were given
 \n

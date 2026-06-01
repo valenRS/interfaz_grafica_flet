@@ -14,12 +14,12 @@ import pandas as pd
 from PIL import Image, ImageDraw
 
 import utils.settings as settings
-from utils.api_client import get_current_weather, get_current_weather_from_geo, search_cities
-from utils.data_manager import add_city, get_cities, get_weather_cache, save_weather_cache
+from utils.api_client import obtener_clima_actual, obtener_clima_actual_desde_geo, buscar_ciudades
+from utils.data_manager import agregar_ciudad, obtener_ciudades, obtener_cache_clima, guardar_cache_clima
 
 # ── Generación de íconos con Pillow ──────────────────────────────────────────
 
-_ICON_PALETTE: dict[str, tuple[str, str]] = {
+_PALETA_ICONOS: dict[str, tuple[str, str]] = {
     "sunny":         ("#FDD835", "#F57F17"),
     "partly_cloudy": ("#90CAF9", "#42A5F5"),
     "cloudy":        ("#90A4AE", "#546E7A"),
@@ -31,22 +31,22 @@ _ICON_PALETTE: dict[str, tuple[str, str]] = {
     "unknown":       ("#B0BEC5", "#78909C"),
 }
 
-_icon_cache: dict[str, str] = {}
+_cache_iconos: dict[str, str] = {}
 
 
-def _hex_to_rgb(h: str) -> tuple:
+def _hex_a_rgb(h: str) -> tuple:
     h = h.lstrip("#")
     return tuple(int(h[i: i + 2], 16) for i in (0, 2, 4))
 
 
-def _make_icon(condition: str) -> str:
+def _crear_icono(condition: str) -> str:
     """Genera un ícono del clima con Pillow y retorna el PNG codificado en base64."""
-    if condition in _icon_cache:
-        return _icon_cache[condition]
+    if condition in _cache_iconos:
+        return _cache_iconos[condition]
 
-    bg_hex, ac_hex = _ICON_PALETTE.get(condition, _ICON_PALETTE["unknown"])
-    bg = _hex_to_rgb(bg_hex)
-    ac = _hex_to_rgb(ac_hex)
+    bg_hex, ac_hex = _PALETA_ICONOS.get(condition, _PALETA_ICONOS["unknown"])
+    bg = _hex_a_rgb(bg_hex)
+    ac = _hex_a_rgb(ac_hex)
 
     size = 80
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
@@ -95,7 +95,7 @@ def _make_icon(condition: str) -> str:
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     result = base64.b64encode(buf.getvalue()).decode()
-    _icon_cache[condition] = result
+    _cache_iconos[condition] = result
     return result
 
 
@@ -123,12 +123,12 @@ class HomeView:
         self.on_go_cities = on_go_cities
         self.on_go_alerts = on_go_alerts
         self.on_logout = on_logout
-        self._weather_data: dict | None = None
-        self._dlg: ft.AlertDialog | None = None
+        self._datos_clima: dict | None = None
+        self._dialogo_seleccion: ft.AlertDialog | None = None
 
         # ── Controles: búsqueda ───────────────────────────────────────────────
 
-        self._city_input = ft.TextField(
+        self._entrada_ciudad = ft.TextField(
             label="Buscar ciudad",
             hint_text="Ej: Bogotá, Madrid, Buenos Aires…",
             prefix_icon=ft.Icons.SEARCH,
@@ -138,14 +138,14 @@ class HomeView:
             color="#FFFFFF",
             bgcolor="#1565C0",
             border_radius=8,
-            on_submit=self._on_search,
+            on_submit=self._al_buscar_ciudad,
             expand=True,
         )
 
-        self._dropdown = ft.Dropdown(
+        self._lista_favoritas = ft.Dropdown(
             label="Ciudades favoritas",
             options=[],
-            on_change=self._on_dropdown_select,
+            on_change=self._al_seleccionar_de_lista,
             border_radius=8,
             border_color="#42A5F5",
             focused_border_color="#FFFFFF",
@@ -155,10 +155,10 @@ class HomeView:
             expand=True,
         )
 
-        self._search_btn = ft.ElevatedButton(
+        self._boton_buscar = ft.ElevatedButton(
             text="Buscar",
             icon=ft.Icons.SEARCH,
-            on_click=self._on_search,
+            on_click=self._al_buscar_ciudad,
             style=ft.ButtonStyle(
                 bgcolor="#29B6F6",
                 color="#FFFFFF",
@@ -166,28 +166,28 @@ class HomeView:
             ),
         )
 
-        self._msg = ft.Text("", size=13, color="#90CAF9")
+        self._mensaje_estado = ft.Text("", size=13, color="#90CAF9")
 
         # ── Controles: tarjeta del clima ──────────────────────────────────────
 
-        self._weather_icon = ft.Image(
-            src_base64=_make_icon("unknown"),
+        self._icono_clima = ft.Image(
+            src_base64=_crear_icono("unknown"),
             width=72,
             height=72,
         )
-        self._city_lbl = ft.Text("", size=18, weight=ft.FontWeight.BOLD, color="#FFFFFF")
-        self._desc_lbl = ft.Text("", size=14, color="#E3F2FD")
-        self._temp_lbl = ft.Text("", size=52, weight=ft.FontWeight.BOLD, color="#FFFFFF")
-        self._max_lbl  = ft.Text("", size=14, color="#FFCC80")
-        self._min_lbl  = ft.Text("", size=14, color="#80D8FF")
-        self._sens_lbl = ft.Text("", size=13, color="#CFD8DC")
-        self._wind_lbl = ft.Text("", size=13, color="#CFD8DC")
-        self._hum_lbl  = ft.Text("", size=13, color="#CFD8DC")
+        self._etiqueta_ciudad = ft.Text("", size=18, weight=ft.FontWeight.BOLD, color="#FFFFFF")
+        self._etiqueta_descripcion = ft.Text("", size=14, color="#E3F2FD")
+        self._etiqueta_temperatura = ft.Text("", size=52, weight=ft.FontWeight.BOLD, color="#FFFFFF")
+        self._etiqueta_temp_max  = ft.Text("", size=14, color="#FFCC80")
+        self._etiqueta_temp_min  = ft.Text("", size=14, color="#80D8FF")
+        self._etiqueta_sensacion = ft.Text("", size=13, color="#CFD8DC")
+        self._etiqueta_viento = ft.Text("", size=13, color="#CFD8DC")
+        self._etiqueta_humedad  = ft.Text("", size=13, color="#CFD8DC")
 
         # ── Controles: banner de alerta ───────────────────────────────────────
 
-        self._alert_text = ft.Text("", color="#FFFFFF", size=14)
-        self._alert_banner = ft.Container(
+        self._texto_alerta = ft.Text("", color="#FFFFFF", size=14)
+        self._banner_alerta = ft.Container(
             visible=False,
             bgcolor="#BF360C",
             border_radius=8,
@@ -196,15 +196,15 @@ class HomeView:
                 spacing=10,
                 controls=[
                     ft.Icon(ft.Icons.WARNING_AMBER, color="#FFFFFF", size=22),
-                    self._alert_text,
+                    self._texto_alerta,
                 ],
             ),
         )
 
         # ── Controles: banner sin conexión ──────────────────────────────────────
 
-        self._offline_text = ft.Text("", color="#FFFFFF", size=13)
-        self._offline_banner = ft.Container(
+        self._texto_sin_conexion = ft.Text("", color="#FFFFFF", size=13)
+        self._banner_sin_conexion = ft.Container(
             visible=False,
             bgcolor="#E65100",
             border_radius=8,
@@ -213,13 +213,13 @@ class HomeView:
                 spacing=10,
                 controls=[
                     ft.Icon(ft.Icons.WIFI_OFF, color="#FFFFFF", size=22),
-                    self._offline_text,
+                    self._texto_sin_conexion,
                 ],
             ),
         )
 
         # Tarjeta del clima (armada en build())
-        self._weather_card: ft.Container | None = None
+        self._tarjeta_clima: ft.Container | None = None
 
         # ── Controles: unidades de medida ─────────────────────────────────────
         _btn_style = ft.ButtonStyle(
@@ -227,86 +227,86 @@ class HomeView:
             side=ft.BorderSide(color="#90CAF9", width=1),
             padding=ft.padding.symmetric(horizontal=10, vertical=4),
         )
-        self._btn_temp_unit = ft.OutlinedButton(
-            text=settings.temp_symbol(),
-            on_click=self._toggle_temp,
+        self._boton_unidad_temp = ft.OutlinedButton(
+            text=settings.simbolo_temperatura(),
+            on_click=self._cambiar_unidad_temperatura,
             style=_btn_style,
             height=32,
         )
-        self._btn_speed_unit = ft.OutlinedButton(
-            text=settings.speed_symbol(),
-            on_click=self._toggle_speed,
+        self._boton_unidad_vel = ft.OutlinedButton(
+            text=settings.simbolo_velocidad(),
+            on_click=self._cambiar_unidad_velocidad,
             style=_btn_style,
             height=32,
         )
 
         # Botones duplicados para la cabecera (sin quitar los de la tarjeta)
-        self._hdr_btn_temp_unit = ft.OutlinedButton(
-            text=settings.temp_symbol(),
-            on_click=self._toggle_temp,
+        self._boton_cabecera_unidad_temp = ft.OutlinedButton(
+            text=settings.simbolo_temperatura(),
+            on_click=self._cambiar_unidad_temperatura,
             style=_btn_style,
             height=28,
         )
-        self._hdr_btn_speed_unit = ft.OutlinedButton(
-            text=settings.speed_symbol(),
-            on_click=self._toggle_speed,
+        self._boton_cabecera_unidad_vel = ft.OutlinedButton(
+            text=settings.simbolo_velocidad(),
+            on_click=self._cambiar_unidad_velocidad,
             style=_btn_style,
             height=28,
         )
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
-    def _refresh_dropdown(self, update: bool = False) -> None:
-        df = get_cities(self.username)
-        self._dropdown.options = [
+    def _actualizar_lista_ciudades(self, update: bool = False) -> None:
+        df = obtener_ciudades(self.username)
+        self._lista_favoritas.options = [
             ft.dropdown.Option(str(row["ciudad"])) for _, row in df.iterrows()
         ]
         if update:
             self.page.update()
 
-    def _on_dropdown_select(self, e: ft.ControlEvent) -> None:
+    def _al_seleccionar_de_lista(self, e: ft.ControlEvent) -> None:
         if e.control.value:
-            self._city_input.value = e.control.value
+            self._entrada_ciudad.value = e.control.value
             self.page.update()
 
-    def _on_search(self, e: ft.ControlEvent) -> None:
-        city = (self._city_input.value or "").strip()
+    def _al_buscar_ciudad(self, e: ft.ControlEvent) -> None:
+        city = (self._entrada_ciudad.value or "").strip()
         if not city:
-            self._msg.value = "Escribe el nombre de una ciudad."
-            self._msg.color = "#EF9A9A"
+            self._mensaje_estado.value = "Escribe el nombre de una ciudad."
+            self._mensaje_estado.color = "#EF9A9A"
             self.page.update()
             return
 
-        self._msg.value = "Buscando…"
-        self._msg.color = "#90CAF9"
+        self._mensaje_estado.value = "Buscando…"
+        self._mensaje_estado.color = "#90CAF9"
         self.page.update()
 
-        options = search_cities(city, count=5)
+        options = buscar_ciudades(city, cantidad=5)
         if not options:
             # Sin resultado: puede ser falta de internet → intentar cache
-            cached = get_weather_cache(city, self.username)
+            cached = obtener_cache_clima(city, self.username)
             if cached is not None:
-                self._show_offline_weather(cached)
+                self._mostrar_clima_sin_conexion(cached)
                 return
-            self._msg.value = "Ciudad no encontrada o sin conexión a internet."
-            self._msg.color = "#EF9A9A"
-            self._weather_data = None
-            self._weather_card.visible = False
-            self._alert_banner.visible = False
-            self._offline_banner.visible = False
+            self._mensaje_estado.value = "Ciudad no encontrada o sin conexión a internet."
+            self._mensaje_estado.color = "#EF9A9A"
+            self._datos_clima = None
+            self._tarjeta_clima.visible = False
+            self._banner_alerta.visible = False
+            self._banner_sin_conexion.visible = False
             self.page.update()
             return
 
         if len(options) == 1:
-            self._on_city_selected(options[0])
+            self._al_elegir_ciudad(options[0])
         else:
-            self._show_city_options(options)
+            self._mostrar_opciones_ciudad(options)
 
-    def _show_offline_weather(self, cached: dict) -> None:
+    def _mostrar_clima_sin_conexion(self, cached: dict) -> None:
         """Muestra el último clima cacheado con un aviso de sin conexión."""
-        self._weather_data = cached
-        self._display_weather(cached)
-        self._check_alert(cached)
+        self._datos_clima = cached
+        self._mostrar_clima_en_tarjeta(cached)
+        self._verificar_alerta_clima(cached)
 
         fecha = cached.get("ultima_consulta", "")
         try:
@@ -315,62 +315,75 @@ class HomeView:
         except (ValueError, TypeError):
             fecha_str = str(fecha)
 
-        self._offline_text.value = (
+        self._texto_sin_conexion.value = (
             f"Sin internet · Último dato: {fecha_str}"
         )
-        self._offline_banner.visible = True
+        self._banner_sin_conexion.visible = True
 
-        fav_df = get_cities(self.username)
+        fav_df = obtener_ciudades(self.username)
         is_fav = not fav_df[fav_df["ciudad"].str.lower() == cached["ciudad"].lower()].empty
-        self._msg.value = ""
+        self._mensaje_estado.value = ""
         self.page.update()
 
-    def _display_weather(self, data: dict) -> None:
-        self._weather_icon.src_base64 = _make_icon(data.get("icono", "unknown"))
-        self._city_lbl.value = f"{data['ciudad']}, {data['pais']}"
-        self._desc_lbl.value = data.get("descripcion", "")
+    # ── Mostrar clima en tarjeta ──────────────────────────────────
+    # El diccionario `data` fue creado por api_client._consultar_clima_desde_geo()
+    # a partir de la respuesta JSON de Open-Meteo. Sus claves ya están en español:
+    #
+    #   data["temperatura"]       ← Open-Meteo envía "temperature_2m"
+    #   data["sensacion_termica"] ← Open-Meteo envía "apparent_temperature"
+    #   data["humedad"]           ← Open-Meteo envía "relative_humidity_2m"
+    #   data["viento"]            ← Open-Meteo envía "wind_speed_10m"
+    #   data["temp_max"]          ← Open-Meteo envía daily["temperature_2m_max"]
+    #   data["temp_min"]          ← Open-Meteo envía daily["temperature_2m_min"]
+    #   data["icono"]             ← traducido desde el código WMO (weathercode)
+    #   data["descripcion"]       ← traducido desde el código WMO
 
-        sym = settings.temp_symbol()
-        spd = settings.speed_symbol()
+    def _mostrar_clima_en_tarjeta(self, data: dict) -> None:
+        self._icono_clima.src_base64 = _crear_icono(data.get("icono", "unknown"))
+        self._etiqueta_ciudad.value = f"{data['ciudad']}, {data['pais']}"
+        self._etiqueta_descripcion.value = data.get("descripcion", "")
 
-        t  = settings.convert_temp(data.get("temperatura"))
-        mx = settings.convert_temp(data.get("temp_max"))
-        mn = settings.convert_temp(data.get("temp_min"))
-        st = settings.convert_temp(data.get("sensacion_termica"))
-        wi = settings.convert_speed(data.get("viento"))
+        sym = settings.simbolo_temperatura()
+        spd = settings.simbolo_velocidad()
+
+        t  = settings.convertir_temperatura(data.get("temperatura"))
+        mx = settings.convertir_temperatura(data.get("temp_max"))
+        mn = settings.convertir_temperatura(data.get("temp_min"))
+        st = settings.convertir_temperatura(data.get("sensacion_termica"))
+        wi = settings.convertir_velocidad(data.get("viento"))
         hu = data.get("humedad")
 
-        self._temp_lbl.value = f"{t:.0f}{sym}" if t is not None else "—"
-        self._max_lbl.value  = f"↑ {mx:.0f}{sym}" if mx is not None else ""
-        self._min_lbl.value  = f"↓ {mn:.0f}{sym}" if mn is not None else ""
-        self._sens_lbl.value = f"Sensación  {st:.0f}{sym}" if st is not None else ""
-        self._wind_lbl.value = f"💨 {wi:.1f} {spd}" if wi is not None else ""
-        self._hum_lbl.value  = f"💧 {hu}%"  if hu is not None else ""
+        self._etiqueta_temperatura.value = f"{t:.0f}{sym}" if t is not None else "—"
+        self._etiqueta_temp_max.value  = f"↑ {mx:.0f}{sym}" if mx is not None else ""
+        self._etiqueta_temp_min.value  = f"↓ {mn:.0f}{sym}" if mn is not None else ""
+        self._etiqueta_sensacion.value = f"Sensación  {st:.0f}{sym}" if st is not None else ""
+        self._etiqueta_viento.value = f"💨 {wi:.1f} {spd}" if wi is not None else ""
+        self._etiqueta_humedad.value  = f"💧 {hu}%"  if hu is not None else ""
 
-        self._weather_card.visible = True
+        self._tarjeta_clima.visible = True
 
-    def _check_alert(self, data: dict) -> None:
-        fav_df = get_cities(self.username)
+    def _verificar_alerta_clima(self, data: dict) -> None:
+        fav_df = obtener_ciudades(self.username)
         match = fav_df[fav_df["ciudad"].str.lower() == data["ciudad"].lower()]
         if match.empty:
-            self._alert_banner.visible = False
+            self._banner_alerta.visible = False
             return
 
         temp = data.get("temperatura")
         if temp is None:
-            self._alert_banner.visible = False
+            self._banner_alerta.visible = False
             return
 
         row = match.iloc[0]
         max_t = row["alerta_max_temp"]
         min_t = row["alerta_min_temp"]
 
-        sym  = settings.temp_symbol()
-        unit = settings.get_temp_unit()
+        sym  = settings.simbolo_temperatura()
+        unit = settings.obtener_unidad_temperatura()
 
         msg = ""
         if pd.notna(max_t) and temp > float(max_t):
-            disp_temp = settings.convert_temp(temp)
+            disp_temp = settings.convertir_temperatura(temp)
             if unit == "F":
                 disp_max = (float(row["alerta_max_temp_f"])
                             if pd.notna(row.get("alerta_max_temp_f"))
@@ -379,7 +392,7 @@ class HomeView:
                 disp_max = float(max_t)
             msg = f"Temperatura actual ({disp_temp:.0f}{sym}) supera el umbral máximo ({disp_max:.0f}{sym})"
         elif pd.notna(min_t) and temp < float(min_t):
-            disp_temp = settings.convert_temp(temp)
+            disp_temp = settings.convertir_temperatura(temp)
             if unit == "F":
                 disp_min = (float(row["alerta_min_temp_f"])
                             if pd.notna(row.get("alerta_min_temp_f"))
@@ -388,34 +401,34 @@ class HomeView:
                 disp_min = float(min_t)
             msg = f"Temperatura actual ({disp_temp:.0f}{sym}) está bajo el umbral mínimo ({disp_min:.0f}{sym})"
 
-        self._alert_text.value = msg
-        self._alert_banner.visible = bool(msg)
+        self._texto_alerta.value = msg
+        self._banner_alerta.visible = bool(msg)
 
     # ── Unidades de medida ─────────────────────────────────────────────────────
 
-    def _toggle_temp(self, e: ft.ControlEvent) -> None:
-        settings.set_temp_unit("F" if settings.get_temp_unit() == "C" else "C")
-        self._btn_temp_unit.text = settings.temp_symbol()
+    def _cambiar_unidad_temperatura(self, e: ft.ControlEvent) -> None:
+        settings.establecer_unidad_temperatura("F" if settings.obtener_unidad_temperatura() == "C" else "C")
+        self._boton_unidad_temp.text = settings.simbolo_temperatura()
         # Also update header button if exists
-        if hasattr(self, "_hdr_btn_temp_unit"):
-            self._hdr_btn_temp_unit.text = settings.temp_symbol()
-        if self._weather_data:
-            self._display_weather(self._weather_data)
+        if hasattr(self, "_boton_cabecera_unidad_temp"):
+            self._boton_cabecera_unidad_temp.text = settings.simbolo_temperatura()
+        if self._datos_clima:
+            self._mostrar_clima_en_tarjeta(self._datos_clima)
         self.page.update()
 
-    def _toggle_speed(self, e: ft.ControlEvent) -> None:
-        settings.set_speed_unit("mph" if settings.get_speed_unit() == "kmh" else "kmh")
-        self._btn_speed_unit.text = settings.speed_symbol()
+    def _cambiar_unidad_velocidad(self, e: ft.ControlEvent) -> None:
+        settings.establecer_unidad_velocidad("mph" if settings.obtener_unidad_velocidad() == "kmh" else "kmh")
+        self._boton_unidad_vel.text = settings.simbolo_velocidad()
         # Also update header button if exists
-        if hasattr(self, "_hdr_btn_speed_unit"):
-            self._hdr_btn_speed_unit.text = settings.speed_symbol()
-        if self._weather_data:
-            self._display_weather(self._weather_data)
+        if hasattr(self, "_boton_cabecera_unidad_vel"):
+            self._boton_cabecera_unidad_vel.text = settings.simbolo_velocidad()
+        if self._datos_clima:
+            self._mostrar_clima_en_tarjeta(self._datos_clima)
         self.page.update()
 
     # ── Búsqueda con opciones múltiples ────────────────────────────────────────
 
-    def _show_city_options(self, options: list[dict]) -> None:
+    def _mostrar_opciones_ciudad(self, options: list[dict]) -> None:
         """Muestra un diálogo para que el usuario elija entre varias ciudades."""
         tiles = [
             ft.ListTile(
@@ -429,11 +442,11 @@ class HomeView:
                     color="#90CAF9",
                     size=12,
                 ),
-                on_click=lambda e, o=opt: self._on_city_selected(o),
+                on_click=lambda e, o=opt: self._al_elegir_ciudad(o),
             )
             for opt in options
         ]
-        self._dlg = ft.AlertDialog(
+        self._dialogo_seleccion = ft.AlertDialog(
             modal=True,
             title=ft.Text("¿Qué ciudad buscas?", color="#FFFFFF", weight=ft.FontWeight.BOLD),
             bgcolor="#0D47A1",
@@ -441,62 +454,62 @@ class HomeView:
             actions=[
                 ft.TextButton(
                     "Cancelar",
-                    on_click=lambda e: self._close_dialog(),
+                    on_click=lambda e: self._cerrar_dialogo(),
                     style=ft.ButtonStyle(color="#90CAF9"),
                 ),
             ],
         )
-        self._msg.value = ""
-        self.page.open(self._dlg)
+        self._mensaje_estado.value = ""
+        self.page.open(self._dialogo_seleccion)
 
-    def _on_city_selected(self, geo: dict) -> None:
-        self._close_dialog()
-        self._msg.value = "Consultando…"
-        self._msg.color = "#90CAF9"
+    def _al_elegir_ciudad(self, geo: dict) -> None:
+        self._cerrar_dialogo()
+        self._mensaje_estado.value = "Consultando…"
+        self._mensaje_estado.color = "#90CAF9"
         self.page.update()
 
-        data = get_current_weather_from_geo(geo)
+        data = obtener_clima_actual_desde_geo(geo)
         if data is None:
             # Sin conexión: intentar cache por nombre de ciudad
-            cached = get_weather_cache(geo.get("name", ""), self.username)
+            cached = obtener_cache_clima(geo.get("name", ""), self.username)
             if cached is not None:
-                self._show_offline_weather(cached)
+                self._mostrar_clima_sin_conexion(cached)
                 return
-            self._msg.value = "Sin conexión a internet."
-            self._msg.color = "#EF9A9A"
+            self._mensaje_estado.value = "Sin conexión a internet."
+            self._mensaje_estado.color = "#EF9A9A"
             self.page.update()
             return
 
         # Éxito: guardar en cache y ocultar banner offline
-        save_weather_cache(data, self.username)
-        self._offline_banner.visible = False
-        self._weather_data = data
-        self._msg.value = ""
-        self._display_weather(data)
-        self._check_alert(data)
+        guardar_cache_clima(data, self.username)
+        self._banner_sin_conexion.visible = False
+        self._datos_clima = data
+        self._mensaje_estado.value = ""
+        self._mostrar_clima_en_tarjeta(data)
+        self._verificar_alerta_clima(data)
 
-        fav_df = get_cities(self.username)
+        fav_df = obtener_ciudades(self.username)
         is_fav = not fav_df[fav_df["ciudad"].str.lower() == data["ciudad"].lower()].empty
         self.page.update()
         
         if not is_fav:
             def on_yes(e):
-                add_city(
+                agregar_ciudad(
                     self.username,
                     data["ciudad"],
                     data["pais"],
                     data["latitud"],
                     data["longitud"],
                 )
-                self._refresh_dropdown(update=True)
-                self.page.close(self._fav_dlg)
+                self._actualizar_lista_ciudades(update=True)
+                self.page.close(self._dialogo_favorito)
                 self.page.update()
                 
             def on_no(e):
-                self.page.close(self._fav_dlg)
+                self.page.close(self._dialogo_favorito)
                 self.page.update()
             
-            self._fav_dlg = ft.AlertDialog(
+            self._dialogo_favorito = ft.AlertDialog(
                 modal=True,
                 title=ft.Text("Agregar a favoritas", color="#FFFFFF", weight=ft.FontWeight.BOLD),
                 bgcolor="#0D47A1",
@@ -506,18 +519,18 @@ class HomeView:
                     ft.TextButton("No", on_click=on_no, style=ft.ButtonStyle(color="#EF9A9A")),
                 ],
             )
-            self.page.open(self._fav_dlg)
+            self.page.open(self._dialogo_favorito)
 
-    def _close_dialog(self) -> None:
-        if self._dlg is not None:
-            self.page.close(self._dlg)
+    def _cerrar_dialogo(self) -> None:
+        if self._dialogo_seleccion is not None:
+            self.page.close(self._dialogo_seleccion)
 
     # ── Build ─────────────────────────────────────────────────────────────────
 
     def build(self) -> ft.Control:
-        self._refresh_dropdown()
+        self._actualizar_lista_ciudades()
 
-        self._weather_card = ft.Container(
+        self._tarjeta_clima = ft.Container(
             visible=False,
             bgcolor="#0D47A1",
             border_radius=16,
@@ -531,24 +544,24 @@ class HomeView:
                         alignment=ft.MainAxisAlignment.CENTER,
                         spacing=20,
                         controls=[
-                            self._weather_icon,
+                            self._icono_clima,
                             ft.Column(
                                 spacing=4,
-                                controls=[self._city_lbl, self._desc_lbl],
+                                controls=[self._etiqueta_ciudad, self._etiqueta_descripcion],
                             ),
                         ],
                     ),
-                    self._temp_lbl,
+                    self._etiqueta_temperatura,
                     ft.Row(
                         alignment=ft.MainAxisAlignment.CENTER,
                         spacing=24,
-                        controls=[self._max_lbl, self._min_lbl],
+                        controls=[self._etiqueta_temp_max, self._etiqueta_temp_min],
                     ),
                     ft.Divider(color="#1565C0", height=1),
                     ft.Row(
                         alignment=ft.MainAxisAlignment.CENTER,
                         spacing=28,
-                        controls=[self._sens_lbl, self._wind_lbl, self._hum_lbl],
+                        controls=[self._etiqueta_sensacion, self._etiqueta_viento, self._etiqueta_humedad],
                     ),
                     ft.Divider(color="#1565C0", height=1),
                     ft.Row(
@@ -556,8 +569,8 @@ class HomeView:
                         spacing=10,
                         controls=[
                             ft.Text("Unidades:", size=12, color="#90CAF9"),
-                            self._btn_temp_unit,
-                            self._btn_speed_unit,
+                            self._boton_unidad_temp,
+                            self._boton_unidad_vel,
                         ],
                     ),
                 ],
@@ -594,8 +607,8 @@ class HomeView:
                             style=ft.ButtonStyle(color="#FFFFFF"),
                         ),
                         # Botones de unidades en header (duplicados)
-                        self._hdr_btn_temp_unit,
-                        self._hdr_btn_speed_unit,
+                        self._boton_cabecera_unidad_temp,
+                        self._boton_cabecera_unidad_vel,
                         ft.VerticalDivider(width=1, color="#42A5F5"),
                         ft.Text(f"👤 {self.username}", color="#90CAF9", size=13),
                         ft.IconButton(
@@ -625,10 +638,10 @@ class HomeView:
                     ),
                     ft.Row(
                         spacing=10,
-                        controls=[self._city_input, self._search_btn],
+                        controls=[self._entrada_ciudad, self._boton_buscar],
                     ),
-                    self._dropdown,
-                    self._msg,
+                    self._lista_favoritas,
+                    self._mensaje_estado,
                 ],
             ),
         )
@@ -650,9 +663,9 @@ class HomeView:
                             spacing=20,
                             controls=[
                                 search_panel,
-                                self._offline_banner,
-                                self._weather_card,
-                                self._alert_banner,
+                                self._banner_sin_conexion,
+                                self._tarjeta_clima,
+                                self._banner_alerta,
                             ],
                         ),
                     ),

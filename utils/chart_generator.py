@@ -14,14 +14,14 @@ import pandas as pd
 
 # ── Rutas ─────────────────────────────────────────────────────────────────────
 
-_CHARTS_DIR = Path(__file__).resolve().parent.parent / "assets" / "charts"
-_CHARTS_DIR.mkdir(parents=True, exist_ok=True)
+_DIRECTORIO_GRAFICAS = Path(__file__).resolve().parent.parent / "assets" / "charts"
+_DIRECTORIO_GRAFICAS.mkdir(parents=True, exist_ok=True)
 
 # ── Paleta ────────────────────────────────────────────────────────────────────
 
-_COLOR_MAX  = "#EF5350"  # rojo cálido — temperatura máxima
-_COLOR_MIN  = "#42A5F5"  # azul cielo  — temperatura mínima
-_COLOR_PREC = "#29B6F6"  # celeste     — precipitación
+_COLOR_TEMP_MAX       = "#EF5350"  # rojo cálido — temperatura máxima
+_COLOR_TEMP_MIN       = "#42A5F5"  # azul cielo  — temperatura mínima
+_COLOR_PRECIPITACION  = "#29B6F6"  # celeste     — precipitación
 
 # ── Funciones públicas ────────────────────────────────────────────────────────
 
@@ -30,24 +30,29 @@ def chart_temperatura(df: pd.DataFrame, ciudad: str) -> str:
     Genera una gráfica de líneas con temperatura máxima y mínima diaria.
     Retorna la ruta absoluta (str) del PNG guardado en assets/charts/.
     """
-    data = df.copy()
-    data["fecha"] = pd.to_datetime(data["fecha"])
-    data["temp_max"] = pd.to_numeric(data["temp_max"], errors="coerce")
-    data["temp_min"] = pd.to_numeric(data["temp_min"], errors="coerce")
+    datos = df.copy()
+    datos["fecha"] = pd.to_datetime(datos["fecha"])
+    datos["temp_max"] = pd.to_numeric(datos["temp_max"], errors="coerce")
+    datos["temp_min"] = pd.to_numeric(datos["temp_min"], errors="coerce")
+
+    # ⚠️ Eliminar filas donde no se pudo convertir la temperatura (NaN)
+    datos = datos.dropna(subset=["temp_max", "temp_min"])
+    if datos.empty:
+        raise ValueError(f"No hay datos válidos de temperatura para {ciudad}.")
 
     fig, ax = plt.subplots(figsize=(10, 4))
 
     ax.plot(
-        data["fecha"], data["temp_max"],
-        color=_COLOR_MAX, linewidth=2, label="Temp. máxima (°C)",
+        datos["fecha"], datos["temp_max"],
+        color=_COLOR_TEMP_MAX, linewidth=2, label="Temp. máxima (°C)",
         marker="o", markersize=3,
     )
     ax.plot(
-        data["fecha"], data["temp_min"],
-        color=_COLOR_MIN, linewidth=2, label="Temp. mínima (°C)",
+        datos["fecha"], datos["temp_min"],
+        color=_COLOR_TEMP_MIN, linewidth=2, label="Temp. mínima (°C)",
         marker="o", markersize=3,
     )
-    ax.fill_between(data["fecha"], data["temp_min"], data["temp_max"], alpha=0.12, color=_COLOR_MIN)
+    ax.fill_between(datos["fecha"], datos["temp_min"], datos["temp_max"], alpha=0.12, color=_COLOR_TEMP_MIN)
 
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%d/%m"))
     ax.xaxis.set_major_locator(mdates.AutoDateLocator())
@@ -59,10 +64,10 @@ def chart_temperatura(df: pd.DataFrame, ciudad: str) -> str:
     ax.grid(True, linestyle="--", alpha=0.4)
     fig.tight_layout()
 
-    out_path = _CHARTS_DIR / f"temperatura_{ciudad.lower().replace(' ', '_')}.png"
-    fig.savefig(out_path, dpi=120, bbox_inches="tight")
+    ruta_archivo = _DIRECTORIO_GRAFICAS / f"temperatura_{ciudad.lower().replace(' ', '_')}.png"
+    fig.savefig(ruta_archivo, dpi=120, bbox_inches="tight")
     plt.close(fig)
-    return str(out_path)
+    return str(ruta_archivo)
 
 
 def chart_precipitacion(df: pd.DataFrame, ciudad: str) -> str:
@@ -71,16 +76,16 @@ def chart_precipitacion(df: pd.DataFrame, ciudad: str) -> str:
     Cada barra = milímetros de agua caída ese día. 0 mm = día sin lluvia.
     Retorna la ruta absoluta (str) del PNG guardado en assets/charts/.
     """
-    data = df.copy()
-    data["fecha"] = pd.to_datetime(data["fecha"])
-    data["precipitacion"] = pd.to_numeric(data["precipitacion"], errors="coerce").fillna(0)
+    datos = df.copy()
+    datos["fecha"] = pd.to_datetime(datos["fecha"])
+    datos["precipitacion"] = pd.to_numeric(datos["precipitacion"], errors="coerce").fillna(0)
 
     fig, ax = plt.subplots(figsize=(10, 4))
 
-    ax.bar(data["fecha"], data["precipitacion"], color=_COLOR_PREC, width=0.8, edgecolor="white")
+    ax.bar(datos["fecha"], datos["precipitacion"], color=_COLOR_PRECIPITACION, width=0.8, edgecolor="white")
 
     # Anotación cuando no hubo lluvia en todo el período
-    if data["precipitacion"].sum() == 0:
+    if datos["precipitacion"].sum() == 0:
         ax.text(
             0.5, 0.5,
             "Sin precipitación registrada en este período",
@@ -99,7 +104,7 @@ def chart_precipitacion(df: pd.DataFrame, ciudad: str) -> str:
     ax.grid(True, axis="y", linestyle="--", alpha=0.4)
     fig.tight_layout()
 
-    out_path = _CHARTS_DIR / f"precipitacion_{ciudad.lower().replace(' ', '_')}.png"
-    fig.savefig(out_path, dpi=120, bbox_inches="tight")
+    ruta_archivo = _DIRECTORIO_GRAFICAS / f"precipitacion_{ciudad.lower().replace(' ', '_')}.png"
+    fig.savefig(ruta_archivo, dpi=120, bbox_inches="tight")
     plt.close(fig)
-    return str(out_path)
+    return str(ruta_archivo)

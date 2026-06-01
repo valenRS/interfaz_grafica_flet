@@ -10,7 +10,7 @@ import flet as ft
 import pandas as pd
 
 import utils.settings as settings
-from utils.data_manager import get_cities, update_alert
+from utils.data_manager import obtener_ciudades, actualizar_alerta
 
 
 class AlertsView:
@@ -24,17 +24,17 @@ class AlertsView:
         self.username = username
         self.on_go_home = on_go_home
 
-        self._selected_city_id: int | None = None
-        self._max_val: float = 35.0
-        self._min_val: float = 5.0
+        self._id_ciudad_seleccionada: int | None = None
+        self._valor_umbral_max: float = 35.0
+        self._valor_umbral_min: float = 5.0
 
         # ── Controles: selector de ciudad ─────────────────────────────────────
 
-        self._city_dropdown = ft.Dropdown(
+        self._lista_ciudades = ft.Dropdown(
             label="Ciudad favorita",
             hint_text="Seleccionar ciudad",
             options=[],
-            on_change=self._on_city_select,
+            on_change=self._al_seleccionar_ciudad_alerta,
             border_radius=8,
             border_color="#42A5F5",
             focused_border_color="#FFFFFF",
@@ -46,38 +46,38 @@ class AlertsView:
 
         # ── Controles: sliders ────────────────────────────────────────────────
 
-        _sym = settings.temp_symbol()
-        self._max_val_lbl = ft.Text(
-            f"{settings.convert_temp(self._max_val):.0f}{_sym}",
+        _sym = settings.simbolo_temperatura()
+        self._etiqueta_umbral_max = ft.Text(
+            f"{settings.convertir_temperatura(self._valor_umbral_max):.0f}{_sym}",
             size=18,
             weight=ft.FontWeight.BOLD,
             color="#FFCC80",
         )
-        self._min_val_lbl = ft.Text(
-            f"{settings.convert_temp(self._min_val):.0f}{_sym}",
+        self._etiqueta_umbral_min = ft.Text(
+            f"{settings.convertir_temperatura(self._valor_umbral_min):.0f}{_sym}",
             size=18,
             weight=ft.FontWeight.BOLD,
             color="#80D8FF",
         )
 
-        self._max_slider = ft.Slider(
+        self._deslizador_umbral_max = ft.Slider(
             min=-20,
             max=50,
-            value=self._max_val,
+            value=self._valor_umbral_max,
             divisions=70,
-            on_change=self._on_max_change,
+            on_change=self._al_cambiar_umbral_max,
             active_color="#FF7043",
             inactive_color="#1565C0",
             expand=True,
             disabled=True,
         )
 
-        self._min_slider = ft.Slider(
+        self._deslizador_umbral_min = ft.Slider(
             min=-20,
             max=50,
-            value=self._min_val,
+            value=self._valor_umbral_min,
             divisions=70,
-            on_change=self._on_min_change,
+            on_change=self._al_cambiar_umbral_min,
             active_color="#29B6F6",
             inactive_color="#1565C0",
             expand=True,
@@ -86,16 +86,16 @@ class AlertsView:
 
         # ── Controles: checkbox y botón ───────────────────────────────────────
 
-        self._active_checkbox = ft.Checkbox(
+        self._casilla_alerta_activa = ft.Checkbox(
             label="Activar alerta para esta ciudad",
             value=False,
             label_style=ft.TextStyle(color="#FFFFFF", size=14),
         )
 
-        self._save_btn = ft.ElevatedButton(
+        self._boton_guardar = ft.ElevatedButton(
             text="Guardar configuración",
             icon=ft.Icons.SAVE,
-            on_click=self._on_save,
+            on_click=self._al_guardar_alerta,
             style=ft.ButtonStyle(
                 bgcolor="#29B6F6",
                 color="#FFFFFF",
@@ -103,138 +103,138 @@ class AlertsView:
             ),
         )
 
-        self._msg = ft.Text("", size=13)
+        self._mensaje_estado = ft.Text("", size=13)
 
         # ── Controles: resumen de alertas activas ─────────────────────────────
 
-        self._summary_column = ft.Column(spacing=8)
+        self._columna_resumen = ft.Column(spacing=8)
 
         _btn_style = ft.ButtonStyle(
             color="#FFFFFF",
             side=ft.BorderSide(color="#90CAF9", width=1),
             padding=ft.padding.symmetric(horizontal=10, vertical=4),
         )
-        self._hdr_btn_temp_unit = ft.OutlinedButton(
-            text=settings.temp_symbol(),
-            on_click=self._toggle_temp,
+        self._boton_cabecera_unidad_temp = ft.OutlinedButton(
+            text=settings.simbolo_temperatura(),
+            on_click=self._cambiar_unidad_temperatura,
             style=_btn_style,
             height=28,
         )
-        self._hdr_btn_speed_unit = ft.OutlinedButton(
-            text=settings.speed_symbol(),
-            on_click=self._toggle_speed,
+        self._boton_cabecera_unidad_vel = ft.OutlinedButton(
+            text=settings.simbolo_velocidad(),
+            on_click=self._cambiar_unidad_velocidad,
             style=_btn_style,
             height=28,
         )
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
-    def _toggle_temp(self, e: ft.ControlEvent) -> None:
-        settings.set_temp_unit("F" if settings.get_temp_unit() == "C" else "C")
-        self._hdr_btn_temp_unit.text = settings.temp_symbol()
-        sym = settings.temp_symbol()
-        self._max_val_lbl.value = f"{settings.convert_temp(self._max_val):.0f}{sym}"
-        self._min_val_lbl.value = f"{settings.convert_temp(self._min_val):.0f}{sym}"
-        self._refresh_summary()
+    def _cambiar_unidad_temperatura(self, e: ft.ControlEvent) -> None:
+        settings.establecer_unidad_temperatura("F" if settings.obtener_unidad_temperatura() == "C" else "C")
+        self._boton_cabecera_unidad_temp.text = settings.simbolo_temperatura()
+        sym = settings.simbolo_temperatura()
+        self._etiqueta_umbral_max.value = f"{settings.convertir_temperatura(self._valor_umbral_max):.0f}{sym}"
+        self._etiqueta_umbral_min.value = f"{settings.convertir_temperatura(self._valor_umbral_min):.0f}{sym}"
+        self._actualizar_resumen_alertas()
         self.page.update()
 
-    def _toggle_speed(self, e: ft.ControlEvent) -> None:
-        settings.set_speed_unit("mph" if settings.get_speed_unit() == "kmh" else "kmh")
-        self._hdr_btn_speed_unit.text = settings.speed_symbol()
+    def _cambiar_unidad_velocidad(self, e: ft.ControlEvent) -> None:
+        settings.establecer_unidad_velocidad("mph" if settings.obtener_unidad_velocidad() == "kmh" else "kmh")
+        self._boton_cabecera_unidad_vel.text = settings.simbolo_velocidad()
         self.page.update()
 
-    def _refresh_dropdown(self) -> None:
-        df = get_cities(self.username)
-        self._city_dropdown.options = [
+    def _actualizar_lista_ciudades(self) -> None:
+        df = obtener_ciudades(self.username)
+        self._lista_ciudades.options = [
             ft.dropdown.Option(str(row["ciudad"])) for _, row in df.iterrows()
         ]
 
-    def _on_city_select(self, e: ft.ControlEvent) -> None:
+    def _al_seleccionar_ciudad_alerta(self, e: ft.ControlEvent) -> None:
         city_name = e.control.value
         if not city_name:
-            self._max_slider.disabled = True
-            self._min_slider.disabled = True
+            self._deslizador_umbral_max.disabled = True
+            self._deslizador_umbral_min.disabled = True
             self.page.update()
             return
 
-        df = get_cities(self.username)
+        df = obtener_ciudades(self.username)
         match = df[df["ciudad"] == city_name]
         if match.empty:
             return
 
         row = match.iloc[0]
-        self._selected_city_id = int(row["id"])
+        self._id_ciudad_seleccionada = int(row["id"])
 
         max_t = row["alerta_max_temp"]
         min_t = row["alerta_min_temp"]
         has_alert = pd.notna(max_t) and pd.notna(min_t)
 
-        self._active_checkbox.value = has_alert
+        self._casilla_alerta_activa.value = has_alert
 
         if has_alert:
-            self._max_val = float(max_t)
-            self._min_val = float(min_t)
+            self._valor_umbral_max = float(max_t)
+            self._valor_umbral_min = float(min_t)
         else:
-            self._max_val = 35.0
-            self._min_val = 5.0
+            self._valor_umbral_max = 35.0
+            self._valor_umbral_min = 5.0
 
-        self._max_slider.value = self._max_val
-        self._min_slider.value = self._min_val
-        self._max_slider.disabled = False
-        self._min_slider.disabled = False
-        sym = settings.temp_symbol()
-        self._max_val_lbl.value = f"{settings.convert_temp(self._max_val):.0f}{sym}"
-        self._min_val_lbl.value = f"{settings.convert_temp(self._min_val):.0f}{sym}"
-        self._msg.value = ""
+        self._deslizador_umbral_max.value = self._valor_umbral_max
+        self._deslizador_umbral_min.value = self._valor_umbral_min
+        self._deslizador_umbral_max.disabled = False
+        self._deslizador_umbral_min.disabled = False
+        sym = settings.simbolo_temperatura()
+        self._etiqueta_umbral_max.value = f"{settings.convertir_temperatura(self._valor_umbral_max):.0f}{sym}"
+        self._etiqueta_umbral_min.value = f"{settings.convertir_temperatura(self._valor_umbral_min):.0f}{sym}"
+        self._mensaje_estado.value = ""
         self.page.update()
 
-    def _on_max_change(self, e: ft.ControlEvent) -> None:
-        self._max_val = float(e.control.value)
+    def _al_cambiar_umbral_max(self, e: ft.ControlEvent) -> None:
+        self._valor_umbral_max = float(e.control.value)
         # Forzar que máximo no sea menor al mínimo
-        if self._max_val <= self._min_val:
-            self._max_val = self._min_val + 1
-            self._max_slider.value = self._max_val
-        self._max_val_lbl.value = f"{settings.convert_temp(self._max_val):.0f}{settings.temp_symbol()}"
+        if self._valor_umbral_max <= self._valor_umbral_min:
+            self._valor_umbral_max = self._valor_umbral_min + 1
+            self._deslizador_umbral_max.value = self._valor_umbral_max
+        self._etiqueta_umbral_max.value = f"{settings.convertir_temperatura(self._valor_umbral_max):.0f}{settings.simbolo_temperatura()}"
         self.page.update()
 
-    def _on_min_change(self, e: ft.ControlEvent) -> None:
-        self._min_val = float(e.control.value)
+    def _al_cambiar_umbral_min(self, e: ft.ControlEvent) -> None:
+        self._valor_umbral_min = float(e.control.value)
         # Forzar que mínimo no sea mayor al máximo
-        if self._min_val >= self._max_val:
-            self._min_val = self._max_val - 1
-            self._min_slider.value = self._min_val
-        self._min_val_lbl.value = f"{settings.convert_temp(self._min_val):.0f}{settings.temp_symbol()}"
+        if self._valor_umbral_min >= self._valor_umbral_max:
+            self._valor_umbral_min = self._valor_umbral_max - 1
+            self._deslizador_umbral_min.value = self._valor_umbral_min
+        self._etiqueta_umbral_min.value = f"{settings.convertir_temperatura(self._valor_umbral_min):.0f}{settings.simbolo_temperatura()}"
         self.page.update()
 
-    def _on_save(self, e: ft.ControlEvent) -> None:
-        if self._selected_city_id is None:
-            self._msg.value = "Selecciona primero una ciudad."
-            self._msg.color = "#FFCC80"
+    def _al_guardar_alerta(self, e: ft.ControlEvent) -> None:
+        if self._id_ciudad_seleccionada is None:
+            self._mensaje_estado.value = "Selecciona primero una ciudad."
+            self._mensaje_estado.color = "#FFCC80"
             self.page.update()
             return
 
-        if self._active_checkbox.value:
-            update_alert(self._selected_city_id, self._max_val, self._min_val)
-            self._msg.value = "Alertas guardadas correctamente."
-            self._msg.color = "#A5D6A7"
+        if self._casilla_alerta_activa.value:
+            actualizar_alerta(self._id_ciudad_seleccionada, self._valor_umbral_max, self._valor_umbral_min)
+            self._mensaje_estado.value = "Alertas guardadas correctamente."
+            self._mensaje_estado.color = "#A5D6A7"
         else:
-            update_alert(self._selected_city_id, None, None)
-            self._msg.value = "Alerta desactivada para esta ciudad."
-            self._msg.color = "#90CAF9"
+            actualizar_alerta(self._id_ciudad_seleccionada, None, None)
+            self._mensaje_estado.value = "Alerta desactivada para esta ciudad."
+            self._mensaje_estado.color = "#90CAF9"
 
-        self._refresh_summary()
+        self._actualizar_resumen_alertas()
         self.page.update()
 
-    def _refresh_summary(self) -> None:
-        df = get_cities(self.username)
+    def _actualizar_resumen_alertas(self) -> None:
+        df = obtener_ciudades(self.username)
         active = df[pd.notna(df["alerta_max_temp"]) & pd.notna(df["alerta_min_temp"])]
-        self._summary_column.controls.clear()
+        self._columna_resumen.controls.clear()
 
-        unit = settings.get_temp_unit()
-        sym  = settings.temp_symbol()
+        unit = settings.obtener_unidad_temperatura()
+        sym  = settings.simbolo_temperatura()
 
         if active.empty:
-            self._summary_column.controls.append(
+            self._columna_resumen.controls.append(
                 ft.Text("Sin alertas activas.", size=13, color="#90CAF9")
             )
         else:
@@ -251,7 +251,7 @@ class AlertsView:
                     max_v = float(row["alerta_max_temp"])
                     min_v = float(row["alerta_min_temp"])
 
-                self._summary_column.controls.append(
+                self._columna_resumen.controls.append(
                     ft.Container(
                         bgcolor="#0D47A1",
                         border_radius=8,
@@ -285,8 +285,8 @@ class AlertsView:
     # ── Build ─────────────────────────────────────────────────────────────────
 
     def build(self) -> ft.Control:
-        self._refresh_dropdown()
-        self._refresh_summary()
+        self._actualizar_lista_ciudades()
+        self._actualizar_resumen_alertas()
 
         header = ft.Container(
             bgcolor="#0D47A1",
@@ -308,8 +308,8 @@ class AlertsView:
                         color="#FFFFFF",
                     ),
                     ft.Container(expand=True),
-                    self._hdr_btn_temp_unit,
-                    self._hdr_btn_speed_unit,
+                    self._boton_cabecera_unidad_temp,
+                    self._boton_cabecera_unidad_vel,
                 ],
             ),
         )
@@ -327,7 +327,7 @@ class AlertsView:
                         weight=ft.FontWeight.W_600,
                         color="#FFFFFF",
                     ),
-                    self._city_dropdown,
+                    self._lista_ciudades,
                     # Slider temperatura máxima
                     ft.Container(
                         bgcolor="#0D47A1",
@@ -345,11 +345,11 @@ class AlertsView:
                                             color="#FFFFFF",
                                             expand=True,
                                         ),
-                                        self._max_val_lbl,
+                                        self._etiqueta_umbral_max,
                                     ],
                                     spacing=8,
                                 ),
-                                ft.Row(controls=[self._max_slider]),
+                                ft.Row(controls=[self._deslizador_umbral_max]),
                             ],
                         ),
                     ),
@@ -370,18 +370,18 @@ class AlertsView:
                                             color="#FFFFFF",
                                             expand=True,
                                         ),
-                                        self._min_val_lbl,
+                                        self._etiqueta_umbral_min,
                                     ],
                                     spacing=8,
                                 ),
-                                ft.Row(controls=[self._min_slider]),
+                                ft.Row(controls=[self._deslizador_umbral_min]),
                             ],
                         ),
                     ),
-                    self._active_checkbox,
+                    self._casilla_alerta_activa,
                     ft.Row(
                         spacing=16,
-                        controls=[self._save_btn, self._msg],
+                        controls=[self._boton_guardar, self._mensaje_estado],
                         vertical_alignment=ft.CrossAxisAlignment.CENTER,
                     ),
                 ],
@@ -407,7 +407,7 @@ class AlertsView:
                             ),
                         ],
                     ),
-                    self._summary_column,
+                    self._columna_resumen,
                 ],
             ),
         )

@@ -5,53 +5,57 @@
 from __future__ import annotations
 
 # ── Estado global de unidades ─────────────────────────────────────────────────
+# ⚠️ IMPORTANTE: Estas variables son "globales" (existen una sola vez en toda
+# la app) porque la preferencia de unidades debe mantenerse aunque el usuario
+# navegue entre ventanas. Si cambia °C → °F en la pantalla principal, al ir
+# al historial debe seguir en °F. Por eso NO están dentro de una clase.
 # Se mantiene en memoria durante la sesión; se reinicia al cerrar la app.
 
-_temp_unit: str = "C"   # "C" | "F"
-_speed_unit: str = "kmh"  # "kmh" | "mph"
+_unidad_temperatura: str = "C"   # "C" | "F"
+_unidad_velocidad: str = "kmh"   # "kmh" | "mph"
 
 
 # ── Getters / Setters ─────────────────────────────────────────────────────────
 
-def get_temp_unit() -> str:
-    return _temp_unit
+def obtener_unidad_temperatura() -> str:
+    return _unidad_temperatura
 
 
-def get_speed_unit() -> str:
-    return _speed_unit
+def obtener_unidad_velocidad() -> str:
+    return _unidad_velocidad
 
 
-def set_temp_unit(unit: str) -> None:
-    global _temp_unit
-    _temp_unit = unit
+def establecer_unidad_temperatura(unidad: str) -> None:
+    global _unidad_temperatura
+    _unidad_temperatura = unidad
 
 
-def set_speed_unit(unit: str) -> None:
-    global _speed_unit
-    _speed_unit = unit
+def establecer_unidad_velocidad(unidad: str) -> None:
+    global _unidad_velocidad
+    _unidad_velocidad = unidad
 
 
 # ── Conversores ───────────────────────────────────────────────────────────────
 
-def convert_temp(value: float | None) -> float | None:
+def convertir_temperatura(valor: float | None) -> float | None:
     """Convierte °C al sistema activo. Devuelve None si el valor es None."""
-    if value is None:
+    if valor is None:
         return None
-    return round(value * 9 / 5 + 32, 1) if _temp_unit == "F" else round(float(value), 1)
+    return round(valor * 9 / 5 + 32, 1) if _unidad_temperatura == "F" else round(float(valor), 1)
 
 
-def convert_speed(value: float | None) -> float | None:
+def convertir_velocidad(valor: float | None) -> float | None:
     """Convierte km/h al sistema activo. Devuelve None si el valor es None."""
-    if value is None:
+    if valor is None:
         return None
-    return round(float(value) * 0.621371, 1) if _speed_unit == "mph" else round(float(value), 1)
+    return round(float(valor) * 0.621371, 1) if _unidad_velocidad == "mph" else round(float(valor), 1)
 
 
 # ── Etiquetas ─────────────────────────────────────────────────────────────────
 
-def temp_symbol() -> str:
-    return "°F" if _temp_unit == "F" else "°C"
+def simbolo_temperatura() -> str:
+    return "°F" if _unidad_temperatura == "F" else "°C"
 
 
-def speed_symbol() -> str:
-    return "mph" if _speed_unit == "mph" else "km/h"
+def simbolo_velocidad() -> str:
+    return "mph" if _unidad_velocidad == "mph" else "km/h"

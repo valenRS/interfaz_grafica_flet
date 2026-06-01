@@ -9,12 +9,12 @@ from typing import Callable
 
 import flet as ft
 
-from utils.data_manager import create_user, get_user
+from utils.data_manager import crear_usuario, obtener_usuario
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-def _hash_password(password: str) -> str:
+def _codificar_contraseña(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 
@@ -33,9 +33,9 @@ class LoginView:
 
         # ── Controles ─────────────────────────────────────────────────────────
 
-        self._mode = ft.RadioGroup(
+        self._modo_radio = ft.RadioGroup(
             value="login",
-            on_change=self._on_mode_change,
+            on_change=self._al_cambiar_modo,
             content=ft.Row(
                 alignment=ft.MainAxisAlignment.CENTER,
                 spacing=28,
@@ -59,13 +59,13 @@ class LoginView:
             width=320,
         )
 
-        self._username = ft.TextField(
+        self._campo_usuario = ft.TextField(
             label="Usuario",
             prefix_icon=ft.Icons.PERSON_OUTLINE,
             **_field_style,
         )
 
-        self._password = ft.TextField(
+        self._campo_contraseña = ft.TextField(
             label="Contraseña",
             password=True,
             can_reveal_password=True,
@@ -73,16 +73,16 @@ class LoginView:
             **_field_style,
         )
 
-        self._message = ft.Text(
+        self._mensaje_estado = ft.Text(
             value="",
             size=13,
             text_align=ft.TextAlign.CENTER,
             width=320,
         )
 
-        self._btn = ft.ElevatedButton(
+        self._boton_accion = ft.ElevatedButton(
             text="Ingresar",
-            on_click=self._on_submit,
+            on_click=self._al_enviar_formulario,
             width=320,
             height=46,
             style=ft.ButtonStyle(
@@ -95,47 +95,47 @@ class LoginView:
 
     # ── Callbacks ─────────────────────────────────────────────────────────────
 
-    def _on_mode_change(self, e: ft.ControlEvent) -> None:
-        self._btn.text = "Ingresar" if self._mode.value == "login" else "Crear cuenta"
-        self._message.value = ""
+    def _al_cambiar_modo(self, e: ft.ControlEvent) -> None:
+        self._boton_accion.text = "Ingresar" if self._modo_radio.value == "login" else "Crear cuenta"
+        self._mensaje_estado.value = ""
         self.page.update()
 
-    def _on_submit(self, e: ft.ControlEvent) -> None:
-        username = self._username.value.strip()
-        password = self._password.value
+    def _al_enviar_formulario(self, e: ft.ControlEvent) -> None:
+        username = self._campo_usuario.value.strip()
+        password = self._campo_contraseña.value
 
         if not username or not password:
-            self._show_message("Por favor completa todos los campos.", error=True)
+            self._mostrar_mensaje("Por favor completa todos los campos.", error=True)
             return
         if len(password) < 4:
-            self._show_message("La contraseña debe tener al menos 4 caracteres.", error=True)
+            self._mostrar_mensaje("La contraseña debe tener al menos 4 caracteres.", error=True)
             return
 
-        pwd_hash = _hash_password(password)
+        pwd_hash = _codificar_contraseña(password)
 
-        if self._mode.value == "login":
-            user = get_user(username)
+        if self._modo_radio.value == "login":
+            user = obtener_usuario(username)
             if user is None:
-                self._show_message("Usuario no encontrado.", error=True)
+                self._mostrar_mensaje("Usuario no encontrado.", error=True)
                 return
             if user["password_hash"] != pwd_hash:
-                self._show_message("Contraseña incorrecta.", error=True)
+                self._mostrar_mensaje("Contraseña incorrecta.", error=True)
                 return
             self.on_login_success(username)
 
         else:
-            if not create_user(username, pwd_hash):
-                self._show_message("El nombre de usuario ya existe.", error=True)
+            if not crear_usuario(username, pwd_hash):
+                self._mostrar_mensaje("El nombre de usuario ya existe.", error=True)
                 return
-            self._show_message("¡Cuenta creada! Ahora puedes iniciar sesión.", error=False)
-            self._mode.value = "login"
-            self._btn.text = "Ingresar"
-            self._password.value = ""
+            self._mostrar_mensaje("¡Cuenta creada! Ahora puedes iniciar sesión.", error=False)
+            self._modo_radio.value = "login"
+            self._boton_accion.text = "Ingresar"
+            self._campo_contraseña.value = ""
             self.page.update()
 
-    def _show_message(self, text: str, *, error: bool) -> None:
-        self._message.value = text
-        self._message.color = "#EF9A9A" if error else "#A5D6A7"
+    def _mostrar_mensaje(self, text: str, *, error: bool) -> None:
+        self._mensaje_estado.value = text
+        self._mensaje_estado.color = "#EF9A9A" if error else "#A5D6A7"
         self.page.update()
 
     # ── Build ─────────────────────────────────────────────────────────────────
@@ -185,14 +185,14 @@ class LoginView:
                                 ),
                                 ft.Divider(color="#1565C0", height=4),
                                 # ── Radio buttons ──────────────────────────
-                                self._mode,
+                                self._modo_radio,
                                 # ── Campos de texto ────────────────────────
-                                self._username,
-                                self._password,
+                                self._campo_usuario,
+                                self._campo_contraseña,
                                 # ── Mensaje de estado ──────────────────────
-                                self._message,
+                                self._mensaje_estado,
                                 # ── Botón de acción ────────────────────────
-                                self._btn,
+                                self._boton_accion,
                             ],
                         ),
                     ),

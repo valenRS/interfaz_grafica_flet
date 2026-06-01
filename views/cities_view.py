@@ -9,8 +9,8 @@ from typing import Callable
 import flet as ft
 
 import utils.settings as settings
-from utils.api_client import geocode_city
-from utils.data_manager import add_city, delete_city, get_cities
+from utils.api_client import geocodificar_ciudad
+from utils.data_manager import agregar_ciudad, eliminar_ciudad, obtener_ciudades
 
 
 class CitiesView:
@@ -25,11 +25,11 @@ class CitiesView:
         self.on_go_home = on_go_home
 
         # city_id → Checkbox
-        self._checkboxes: dict[int, ft.Checkbox] = {}
+        self._casillas_verificacion: dict[int, ft.Checkbox] = {}
 
         # ── Controles: agregar ciudad ─────────────────────────────────────────
 
-        self._new_city_input = ft.TextField(
+        self._entrada_nueva_ciudad = ft.TextField(
             label="Nueva ciudad",
             hint_text="Ej: Tokio, Berlín, Cape Town…",
             prefix_icon=ft.Icons.ADD_LOCATION_ALT,
@@ -39,14 +39,14 @@ class CitiesView:
             color="#FFFFFF",
             bgcolor="#0D47A1",
             border_radius=8,
-            on_submit=self._on_add_city,
+            on_submit=self._al_agregar_ciudad,
             expand=True,
         )
 
-        self._add_btn = ft.ElevatedButton(
+        self._boton_agregar = ft.ElevatedButton(
             text="Agregar",
             icon=ft.Icons.ADD,
-            on_click=self._on_add_city,
+            on_click=self._al_agregar_ciudad,
             style=ft.ButtonStyle(
                 bgcolor="#29B6F6",
                 color="#FFFFFF",
@@ -54,17 +54,17 @@ class CitiesView:
             ),
         )
 
-        self._msg = ft.Text("", size=13)
+        self._mensaje_estado = ft.Text("", size=13)
 
         # ── Controles: lista y conteo ─────────────────────────────────────────
 
-        self._count_lbl = ft.Text("", size=14, color="#90CAF9", weight=ft.FontWeight.W_500)
-        self._cities_column = ft.Column(spacing=8)
+        self._etiqueta_conteo = ft.Text("", size=14, color="#90CAF9", weight=ft.FontWeight.W_500)
+        self._columna_lista_ciudades = ft.Column(spacing=8)
 
-        self._delete_btn = ft.ElevatedButton(
+        self._boton_eliminar = ft.ElevatedButton(
             text="Eliminar seleccionadas",
             icon=ft.Icons.DELETE_OUTLINE,
-            on_click=self._on_delete,
+            on_click=self._al_eliminar_ciudades,
             visible=False,
             style=ft.ButtonStyle(
                 bgcolor="#B71C1C",
@@ -78,40 +78,40 @@ class CitiesView:
             side=ft.BorderSide(color="#90CAF9", width=1),
             padding=ft.padding.symmetric(horizontal=10, vertical=4),
         )
-        self._hdr_btn_temp_unit = ft.OutlinedButton(
-            text=settings.temp_symbol(),
-            on_click=self._toggle_temp,
+        self._boton_cabecera_unidad_temp = ft.OutlinedButton(
+            text=settings.simbolo_temperatura(),
+            on_click=self._cambiar_unidad_temperatura,
             style=_btn_style,
             height=28,
         )
-        self._hdr_btn_speed_unit = ft.OutlinedButton(
-            text=settings.speed_symbol(),
-            on_click=self._toggle_speed,
+        self._boton_cabecera_unidad_vel = ft.OutlinedButton(
+            text=settings.simbolo_velocidad(),
+            on_click=self._cambiar_unidad_velocidad,
             style=_btn_style,
             height=28,
         )
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
-    def _toggle_temp(self, e: ft.ControlEvent) -> None:
-        settings.set_temp_unit("F" if settings.get_temp_unit() == "C" else "C")
-        self._hdr_btn_temp_unit.text = settings.temp_symbol()
+    def _cambiar_unidad_temperatura(self, e: ft.ControlEvent) -> None:
+        settings.establecer_unidad_temperatura("F" if settings.obtener_unidad_temperatura() == "C" else "C")
+        self._boton_cabecera_unidad_temp.text = settings.simbolo_temperatura()
         self.page.update()
 
-    def _toggle_speed(self, e: ft.ControlEvent) -> None:
-        settings.set_speed_unit("mph" if settings.get_speed_unit() == "kmh" else "kmh")
-        self._hdr_btn_speed_unit.text = settings.speed_symbol()
+    def _cambiar_unidad_velocidad(self, e: ft.ControlEvent) -> None:
+        settings.establecer_unidad_velocidad("mph" if settings.obtener_unidad_velocidad() == "kmh" else "kmh")
+        self._boton_cabecera_unidad_vel.text = settings.simbolo_velocidad()
         self.page.update()
 
-    def _refresh_list(self) -> None:
-        df = get_cities(self.username)
-        self._checkboxes.clear()
-        self._cities_column.controls.clear()
+    def _actualizar_lista_ciudades(self) -> None:
+        df = obtener_ciudades(self.username)
+        self._casillas_verificacion.clear()
+        self._columna_lista_ciudades.controls.clear()
 
         count = len(df)
         noun = "ciudad" if count == 1 else "ciudades"
-        self._count_lbl.value = f"{count} {noun} guardadas"
-        self._delete_btn.visible = count > 0
+        self._etiqueta_conteo.value = f"{count} {noun} guardadas"
+        self._boton_eliminar.visible = count > 0
 
         for _, row in df.iterrows():
             city_id = int(row["id"])
@@ -120,9 +120,9 @@ class CitiesView:
                 value=False,
                 label_style=ft.TextStyle(color="#FFFFFF", size=14),
             )
-            self._checkboxes[city_id] = cb
+            self._casillas_verificacion[city_id] = cb
 
-            self._cities_column.controls.append(
+            self._columna_lista_ciudades.controls.append(
                 ft.Container(
                     bgcolor="#0D47A1",
                     border_radius=8,
@@ -139,56 +139,56 @@ class CitiesView:
 
         self.page.update()
 
-    def _on_add_city(self, e: ft.ControlEvent) -> None:
-        city_name = (self._new_city_input.value or "").strip()
+    def _al_agregar_ciudad(self, e: ft.ControlEvent) -> None:
+        city_name = (self._entrada_nueva_ciudad.value or "").strip()
         if not city_name:
             return
 
-        self._msg.value = "Buscando ciudad…"
-        self._msg.color = "#90CAF9"
+        self._mensaje_estado.value = "Buscando ciudad…"
+        self._mensaje_estado.color = "#90CAF9"
         self.page.update()
 
-        geo = geocode_city(city_name)
+        geo = geocodificar_ciudad(city_name)
         if geo is None:
-            self._msg.value = "Ciudad no encontrada o sin conexión a internet."
-            self._msg.color = "#EF9A9A"
+            self._mensaje_estado.value = "Ciudad no encontrada o sin conexión a internet."
+            self._mensaje_estado.color = "#EF9A9A"
             self.page.update()
             return
 
-        ok = add_city(self.username, geo["name"], geo["country"], geo["latitude"], geo["longitude"])
+        ok = agregar_ciudad(self.username, geo["name"], geo["country"], geo["latitude"], geo["longitude"])
         if not ok:
-            self._msg.value = f'"{geo["name"]}" ya está en tu lista.'
-            self._msg.color = "#FFCC80"
+            self._mensaje_estado.value = f'"{geo["name"]}" ya está en tu lista.'
+            self._mensaje_estado.color = "#FFCC80"
         else:
-            self._msg.value = f'"{geo["name"]}" agregada correctamente.'
-            self._msg.color = "#A5D6A7"
-            self._new_city_input.value = ""
-            self._refresh_list()
+            self._mensaje_estado.value = f'"{geo["name"]}" agregada correctamente.'
+            self._mensaje_estado.color = "#A5D6A7"
+            self._entrada_nueva_ciudad.value = ""
+            self._actualizar_lista_ciudades()
 
         self.page.update()
 
-    def _on_delete(self, e: ft.ControlEvent) -> None:
+    def _al_eliminar_ciudades(self, e: ft.ControlEvent) -> None:
         ids_to_delete = [
-            city_id for city_id, cb in self._checkboxes.items() if cb.value
+            city_id for city_id, cb in self._casillas_verificacion.items() if cb.value
         ]
         if not ids_to_delete:
-            self._msg.value = "Selecciona al menos una ciudad para eliminar."
-            self._msg.color = "#FFCC80"
+            self._mensaje_estado.value = "Selecciona al menos una ciudad para eliminar."
+            self._mensaje_estado.color = "#FFCC80"
             self.page.update()
             return
 
         for city_id in ids_to_delete:
-            delete_city(self.username, city_id)
+            eliminar_ciudad(self.username, city_id)
 
         n = len(ids_to_delete)
-        self._msg.value = f"{n} {'ciudad eliminada' if n == 1 else 'ciudades eliminadas'}."
-        self._msg.color = "#A5D6A7"
-        self._refresh_list()
+        self._mensaje_estado.value = f"{n} {'ciudad eliminada' if n == 1 else 'ciudades eliminadas'}."
+        self._mensaje_estado.color = "#A5D6A7"
+        self._actualizar_lista_ciudades()
 
     # ── Build ─────────────────────────────────────────────────────────────────
 
     def build(self) -> ft.Control:
-        self._refresh_list()
+        self._actualizar_lista_ciudades()
 
         header = ft.Container(
             bgcolor="#0D47A1",
@@ -210,9 +210,9 @@ class CitiesView:
                         color="#FFFFFF",
                     ),
                     ft.Container(expand=True),
-                    self._hdr_btn_temp_unit,
-                    self._hdr_btn_speed_unit,
-                    self._count_lbl,
+                    self._boton_cabecera_unidad_temp,
+                    self._boton_cabecera_unidad_vel,
+                    self._etiqueta_conteo,
                 ],
             ),
         )
@@ -232,9 +232,9 @@ class CitiesView:
                     ),
                     ft.Row(
                         spacing=10,
-                        controls=[self._new_city_input, self._add_btn],
+                        controls=[self._entrada_nueva_ciudad, self._boton_agregar],
                     ),
-                    self._msg,
+                    self._mensaje_estado,
                 ],
             ),
         )
@@ -252,8 +252,8 @@ class CitiesView:
                         weight=ft.FontWeight.W_600,
                         color="#FFFFFF",
                     ),
-                    self._cities_column,
-                    self._delete_btn,
+                    self._columna_lista_ciudades,
+                    self._boton_eliminar,
                 ],
             ),
         )

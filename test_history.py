@@ -3,12 +3,12 @@ import flet as ft
 from views.history_view import HistoryView
 import utils.settings as settings
 
-settings.set_temp_unit("F")
+settings.establecer_unidad_temperatura("F")
 
 class FakePage:
     def update(self): pass
     overlay = []
 
 hv = HistoryView(FakePage(), "Valen", lambda: None)
-hv._city_dropdown.value = "Tokio"
-hv._load_data("Tokio")
+hv._lista_ciudades.value = "Tokio"
+hv._cargar_datos_historial("Tokio")
