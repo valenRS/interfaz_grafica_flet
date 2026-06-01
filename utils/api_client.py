@@ -159,24 +159,19 @@ def get_historical(
     Retorna un DataFrame con columnas:
     ciudad, fecha, temp_max, temp_min, precipitacion, viento_max
     para el rango de fechas dado (formato YYYY-MM-DD).
-    Usa el endpoint de forecast con past_days (hasta 92 días atrás).
+    Usa el endpoint de archive de Open-Meteo para consultar cualquier rango histórico.
     Retorna None si hay error de red o no hay datos en el rango.
     """
-    from datetime import date as _date
-    today = _date.today()
-    start = _date.fromisoformat(inicio)
-    past_days = max(1, min((today - start).days + 1, 92))
-
     params = {
-        "latitude":      lat,
-        "longitude":     lon,
-        "daily":         "temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max",
-        "timezone":      "auto",
-        "past_days":     past_days,
-        "forecast_days": 0,
+        "latitude":   lat,
+        "longitude":  lon,
+        "daily":      "temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max",
+        "timezone":   "auto",
+        "start_date": inicio,
+        "end_date":   fin,
     }
     try:
-        resp = requests.get(_FORECAST_URL, params=params, timeout=_TIMEOUT)
+        resp = requests.get(_ARCHIVE_URL, params=params, timeout=_TIMEOUT)
         resp.raise_for_status()
         daily = resp.json().get("daily", {})
         df = pd.DataFrame({
