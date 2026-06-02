@@ -409,21 +409,21 @@ class HomeView:
     def _cambiar_unidad_temperatura(self, e: ft.ControlEvent) -> None:
         settings.establecer_unidad_temperatura("F" if settings.obtener_unidad_temperatura() == "C" else "C")
         self._boton_unidad_temp.text = settings.simbolo_temperatura()
-        # Also update header button if exists
         if hasattr(self, "_boton_cabecera_unidad_temp"):
             self._boton_cabecera_unidad_temp.text = settings.simbolo_temperatura()
         if self._datos_clima:
             self._mostrar_clima_en_tarjeta(self._datos_clima)
+            self._verificar_alerta_clima(self._datos_clima)
         self.page.update()
 
     def _cambiar_unidad_velocidad(self, e: ft.ControlEvent) -> None:
         settings.establecer_unidad_velocidad("mph" if settings.obtener_unidad_velocidad() == "kmh" else "kmh")
         self._boton_unidad_vel.text = settings.simbolo_velocidad()
-        # Also update header button if exists
         if hasattr(self, "_boton_cabecera_unidad_vel"):
             self._boton_cabecera_unidad_vel.text = settings.simbolo_velocidad()
         if self._datos_clima:
             self._mostrar_clima_en_tarjeta(self._datos_clima)
+            self._verificar_alerta_clima(self._datos_clima)
         self.page.update()
 
     # ── Búsqueda con opciones múltiples ────────────────────────────────────────

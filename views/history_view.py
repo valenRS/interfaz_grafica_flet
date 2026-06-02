@@ -75,13 +75,20 @@ class HistoryView:
 
         self._deslizador_dias = ft.Slider(
             min=7,
-            max=90,
+            max=183,
             value=self._dias_consulta,
-            divisions=83,
+            divisions=176,
             on_change=self._al_mover_deslizador_dias,
             active_color="#29B6F6",
             inactive_color="#1565C0",
             expand=True,
+        )
+
+        self._etiqueta_rango = ft.Text(
+            self._calcular_texto_rango(),
+            size=12,
+            color="#80D8FF",
+            italic=True,
         )
 
         self._boton_consultar = ft.ElevatedButton(
@@ -192,9 +199,9 @@ class HistoryView:
             ),
         )
 
-        # DatePicker — rango limitado a 91 días atrás (tope del endpoint de forecast)
+        # DatePicker — ahora permite consultar hasta 1940 (límite del archivo Open-Meteo)
         self._selector_fecha = ft.DatePicker(
-            first_date=datetime.today() - timedelta(days=91),
+            first_date=datetime(1940, 1, 1),
             last_date=datetime.today() - timedelta(days=1),
             on_change=self._al_cambiar_fecha,
         )
@@ -254,6 +261,15 @@ class HistoryView:
             ft.dropdown.Option(str(row["ciudad"])) for _, row in df.iterrows()
         ]
 
+    def _calcular_texto_rango(self) -> str:
+        """Calcula el texto del rango que se consultaría con la fecha y días actuales."""
+        yesterday = datetime.today() - timedelta(days=1)
+        fin = min(self._fecha_inicio + timedelta(days=self._dias_consulta - 1), yesterday)
+        return (
+            f"Período: {self._fecha_inicio.strftime('%d/%m/%Y')}"
+            f"  —  {fin.strftime('%d/%m/%Y')}"
+        )
+
     def _abrir_selector_fecha(self, e: ft.ControlEvent) -> None:
         self._selector_fecha.open = True
         self.page.update()
@@ -262,11 +278,13 @@ class HistoryView:
         if e.control.value:
             self._fecha_inicio = e.control.value
             self._boton_fecha.text = self._fecha_inicio.strftime("%d/%m/%Y")
+            self._etiqueta_rango.value = self._calcular_texto_rango()
             self.page.update()
 
     def _al_mover_deslizador_dias(self, e: ft.ControlEvent) -> None:
         self._dias_consulta = int(e.control.value)
         self._etiqueta_dias.value = f"{self._dias_consulta} días"
+        self._etiqueta_rango.value = self._calcular_texto_rango()
         self.page.update()
 
     def _al_consultar_historial(self, e: ft.ControlEvent) -> None:
@@ -426,6 +444,7 @@ class HistoryView:
                         ],
                     ),
                     ft.Row(controls=[self._deslizador_dias]),
+                    ft.Row(controls=[self._etiqueta_rango]),
                     ft.Row(
                         spacing=16,
                         controls=[self._boton_consultar, self._indicador_carga],

@@ -1,0 +1,467 @@
+\documentclass[12pt,a4paper]{article}
+
+% ── Paquetes ───────────────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{tikz}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+
+\geometry{margin=2.5cm}
+
+% ── Estilo de código ──────────────────────────────────────────────────────────
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    commentstyle=\color{green!50!black},
+    numbers=left,
+    numberstyle=\tiny,
+    frame=single,
+    breaklines=true,
+    backgroundcolor=\color{gray!5},
+}
+
+% ── Configuración de página ───────────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\textbf{MeteoApp} -- Guía de Exposición}
+\fancyhead[R]{\thepage}
+\setlength{\headheight}{14pt}
+
+% ── Título ─────────────────────────────────────────────────────────────────────
+\title{\Huge \textbf{MeteoApp}\\[0.3cm]
+       \Large Dashboard Meteorológico Personal\\[0.3cm]
+       \large Guía Técnica para Exposición}
+\author{Valentina Rodriguez Sepulveda\\[0.2cm]
+        \small ID: 1125789977\\[0.2cm]
+        \small Introducción a la Programación -- Primer Semestre}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+\newpage
+
+\tableofcontents
+\newpage
+
+% ===============================================================================
+\section{¿Qué es MeteoApp?}
+% ===============================================================================
+
+MeteoApp es una aplicación de escritorio desarrollada en Python que funciona como una \textbf{estación meteorológica digital}. Se conecta a internet para consultar datos climáticos reales de cualquier ciudad del mundo y los presenta al usuario a través de una interfaz gráfica amigable.
+
+La aplicación utiliza la \textbf{API pública gratuita de Open-Meteo} para obtener datos como temperatura, humedad, velocidad del viento y precipitación. Toda la interacción se maneja a través de ventanas, botones y gráficas, haciendo que el usuario no necesite conocimientos técnicos para operarla.
+
+\subsection{¿Qué puede hacer el usuario?}
+
+\begin{itemize}[itemsep=4pt]
+    \item \textbf{Iniciar sesión o registrarse} para tener su propio perfil.
+    \item \textbf{Consultar el clima actual} de cualquier ciudad del mundo.
+    \item \textbf{Guardar ciudades favoritas} para acceso rápido.
+    \item \textbf{Ver gráficas de historial meteorológico} (temperatura y precipitación).
+    \item \textbf{Configurar alertas de temperatura} que se activan cuando se superan umbrales definidos.
+    \item \textbf{Cambiar entre unidades} °C/°F y km/h/mph \textbf{sin} volver a consultar la API.
+    \item \textbf{Usar la aplicación sin internet}, gracias a un sistema de caché local.
+\end{itemize}
+
+% ===============================================================================
+\section{Arquitectura del proyecto}
+% ===============================================================================
+
+\subsection{Estructura de carpetas}
+
+El proyecto está organizado en una arquitectura de tres capas: \textbf{controlador (main)}, \textbf{vistas (views)} y \textbf{lógica (utils)}.
+
+\begin{lstlisting}[frame=none, numbers=none, basicstyle=\ttfamily\footnotesize]
+interfaz_grafica_flet/
+├── main.py
+├── requirements.txt
+├── utils/
+│   ├── api_client.py
+│   ├── data_manager.py
+│   ├── settings.py
+│   └── chart_generator.py
+├── views/
+│   ├── login_view.py
+│   ├── home_view.py
+│   ├── history_view.py
+│   ├── cities_view.py
+│   └── alerts_view.py
+├── data/
+│   ├── usuarios.csv
+│   ├── ciudades.csv
+│   ├── historial_clima.csv
+│   └── cache_clima.csv
+└── assets/
+    └── charts/
+\end{lstlisting}
+
+\noindent\textbf{Archivos y carpetas clave (breve explicación)}
+\begin{itemize}
+    \item \textbf{main.py}: punto de entrada y controlador de navegación entre pantallas.
+    \item \textbf{utils/api_client.py}: consulta Open‑Meteo y traduce las claves JSON a español.
+    \item \textbf{utils/data_manager.py}: lectura y escritura de los CSV en \texttt{data/}.
+    \item \textbf{utils/settings.py}: preferencias de unidades (°C/°F, km/h/mph).
+    \item \textbf{utils/chart_generator.py}: genera las gráficas PNG para \texttt{assets/charts/}.
+    \item \textbf{views/}: contiene las pantallas de la app; \texttt{home_view.py} es la principal.
+    \item \textbf{data/}: CSV de persistencia (usuarios, ciudades, historial, cache).
+\end{itemize}
+
+% Nota para la exposición: una lista clara y sin comentarios en línea evita saltos de línea innecesarios al renderizar.
+
+\subsection{Sugerencia: cómo explicar y demostrar en clase}
+\begin{itemize}
+    \item Empieza mostrando la interfaz principal (tarjeta de clima) y explica qué datos muestra.
+    \item Demo rápida (pasos): iniciar sesión (usuario demo), buscar "Bogot\'a", seleccionar la ciudad, agregar a favoritas, cambiar unidad a °F, abrir Historial (7 días).
+    \item Muestra el modo offline: desconectar internet y abrir la ciudad cacheada para que la audiencia vea el banner naranja.
+    \item Explica brevemente la seguridad: las contrase\~nas se guardan como hash SHA‑256 (menciona que para producción se usar\'ian salt/bcrypt).
+    \item Finaliza con arquitectura: separaci\'on clara entre vistas (UI) y \texttt{utils/} (l\'ogica y datos).
+\end{itemize}
+
+\subsection{Instrucciones r\'apidas para ejecutar la app}
+Usa un entorno virtual y luego instala dependencias. Instrucciones para Linux/macOS y para Windows (PowerShell o cmd):
+\begin{lstlisting}[frame=none, numbers=none, basicstyle=\ttfamily\small]
+# Linux / macOS (bash)
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python main.py
+
+# Windows (PowerShell)
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python main.py
+
+# Windows (cmd.exe)
+python -m venv .venv
+.venv\Scripts\activate.bat
+pip install -r requirements.txt
+python main.py
+\end{lstlisting}
+
+\noindent\textbf{Nota técnica:} si ejecutas en entorno sin GUI (servidor), aseg\'urate de que \texttt{utils/chart_generator.py} use el backend \texttt{Agg} de matplotlib (sin interfaz) para generar PNG.
+
+\newpage
+\subsection{Diagrama de flujo de datos}
+
+\begin{figure}[h]
+    \centering
+    \begin{tikzpicture}[node distance=2cm, auto]
+        % Nodos
+        \node (user) [draw, rounded corners, fill=blue!20, minimum width=3cm, minimum height=1cm] {Usuario};
+        \node (view) [draw, rounded corners, fill=green!20, minimum width=3cm, minimum height=1cm, below of=user] {Vista (view/*.py)};
+        \node (api)  [draw, rounded corners, fill=orange!20, minimum width=3cm, minimum height=1cm, below of=view] {API Client (utils/api\_client.py)};
+        \node (openmeteo) [draw, rounded corners, fill=red!20, minimum width=3cm, minimum height=1cm, below of=api] {Open-Meteo API};
+        \node (csv)  [draw, rounded corners, fill=purple!20, minimum width=3cm, minimum height=1cm, right of=api, xshift=4cm] {CSV Files (data/*.csv)};
+
+        % Flechas
+        \draw[->, thick] (user) -- (view) node[midway, right] {clic};
+        \draw[->, thick] (view) -- (api) node[midway, right] {consulta};
+        \draw[->, thick] (api) -- (openmeteo) node[midway, right] {HTTP};
+        \draw[->, thick] (openmeteo) -- (api) node[midway, left] {JSON};
+        \draw[->, thick] (api) -- (view) node[midway, left] {datos};
+        \draw[->, thick] (view) -- (csv) node[midway, above] {guardar};
+        \draw[->, thick] (csv) -- (view) node[midway, below] {leer};
+        \draw[->, thick] (view) -- (user) node[midway, left] {pantalla};
+    \end{tikzpicture}
+    \caption{Flujo de datos en MeteoApp. El usuario interactúa con la vista, que a su vez consulta la API o los archivos CSV locales.}
+\end{figure}
+
+\newpage
+% ===============================================================================
+\section{main.py -- El punto de entrada}
+% ===============================================================================
+
+El archivo \texttt{main.py} es el \textbf{corazón de la navegación}. Cuando se ejecuta \texttt{python main.py}, ocurre lo siguiente:
+
+\begin{enumerate}[itemsep=4pt]
+    \item Se crea una ventana de 960x680 píxeles con tema azul y fuente Roboto.
+    \item Se llama a \texttt{mostrar\_inicio\_sesion()}, que carga la primera pantalla: el inicio de sesión.
+    \item Cada función de navegación (\texttt{mostrar\_inicio}, \texttt{mostrar\_historial}, \texttt{mostrar\_ciudades}, \texttt{mostrar\_alertas}) sigue el mismo patrón:
+    \begin{enumerate}
+        \item Limpiar la pantalla anterior.
+        \item Crear una instancia de la vista correspondiente.
+        \item Pasarle \"callbacks\" (funciones que se ejecutarán cuando el usuario haga clic en un botón).
+        \item Añadir la vista a la página.
+    \end{enumerate}
+\end{enumerate}
+
+\textbf{Concepto clave: callbacks.} Una vista no sabe cómo navegar a otra pantalla; recibe una función (callback) que main.py le entrega. Cuando el usuario hace clic en "Historial", la vista ejecuta el callback y main.py se encarga del resto.
+
+% ===============================================================================
+\section{La carpeta utils/ -- La lógica interna}
+% ===============================================================================
+
+La carpeta \texttt{utils/} contiene todo el código que \textbf{no dibuja nada en pantalla}. Es la parte \"invisible\" pero fundamental: procesa datos, habla con la API, lee archivos y genera gráficas.
+
+\subsection{utils/api\_client.py -- Comunicación con la API}
+
+Este archivo es el \textbf{mensajero} de la aplicación. Se encarga de enviar peticiones a la API de Open-Meteo y traducir las respuestas.
+
+\subsubsection*{¿Qué es una API?}
+
+API son las siglas de \textit{Application Programming Interface} (Interfaz de Programación de Aplicaciones). En términos sencillos:
+
+\begin{quote}
+Una API es como un \textbf{mesero en un restaurante}: tú le pides algo (\"quiero el clima de Bogotá\"), él va a la cocina (el servidor de Open-Meteo), trae tu pedido y te lo entrega en un formato que puedes entender (JSON). Tú no necesitas saber cómo se cocinó; solo recibes lo que pediste.
+\end{quote}
+
+\subsubsection*{Los tres endpoints de Open-Meteo}
+
+\begin{itemize}
+    \item \textbf{Geocodificación} -- Convierte el nombre de una ciudad en coordenadas (latitud y longitud). Se usa cuando el usuario escribe "Bogotá" y la app necesita saber dónde está.
+    
+    \item \textbf{Pronóstico} -- Devuelve el clima actual y el pronóstico del día. Se usa en la pantalla principal para mostrar temperatura, humedad, viento, etc.
+    
+    \item \textbf{Archivo histórico} -- Devuelve datos meteorológicos de fechas pasadas. Se usa en el historial para generar las gráficas.
+\end{itemize}
+
+\subsubsection*{Traducción de claves JSON}
+
+La API de Open-Meteo responde en inglés (por ejemplo, \texttt{temperature\_2m}). api\_client.py \textbf{traduce} estas claves a español antes de entregarlas a las vistas:
+
+\begin{lstlisting}[frame=none, numbers=none, basicstyle=\ttfamily\small]
+"temperature_2m"           --> "temperatura"
+"apparent_temperature"     --> "sensacion_termica"
+"relative_humidity_2m"    --> "humedad"
+"wind_speed_10m"          --> "viento"
+"weathercode"             --> "codigo_clima" + "descripcion" + "icono"
+"temperature_2m_max"      --> "temp_max"
+"temperature_2m_min"      --> "temp_min"
+"precipitation_sum"       --> "precipitacion"
+\end{lstlisting}
+
+Así, las vistas nunca ven los nombres en inglés de la API; trabajan con nombres en español que son más fáciles de entender.
+
+\subsubsection*{¿Por qué 2 metros y 10 metros?}
+
+Los estándares meteorológicos mundiales establecen que:
+\begin{itemize}
+    \item La \textbf{temperatura} se mide a 2 metros del suelo (altura de un termómetro estándar).
+    \item El \textbf{viento} se mide a 10 metros del suelo (altura de un anemómetro en una estación meteorológica).
+\end{itemize}
+
+\subsubsection*{Manejo de errores de red}
+
+Cuando la aplicación no puede comunicarse con la API, el código distingue entre tres tipos de error:
+
+\begin{itemize}
+    \item \texttt{requests.Timeout} -- El servidor no respondió en 10 segundos.
+    \item \texttt{requests.ConnectionError} -- No hay conexión a internet.
+    \item \texttt{requests.HTTPError} -- El servidor respondió con un código de error (ej. 404).
+\end{itemize}
+
+En todos los casos, la función devuelve \texttt{None} (sin datos), permitiendo que la vista decida si mostrar caché o un mensaje de error.
+
+\newpage
+\subsection{utils/data\_manager.py -- Persistencia de datos}
+
+Este archivo maneja la \textbf{lectura y escritura de archivos CSV} usando la librería pandas.
+
+\subsubsection*{¿Qué es persistencia de datos?}
+
+Persistencia significa que los datos \textbf{no se pierden cuando se cierra la aplicación}. En MeteoApp, los datos se guardan en archivos CSV (Comma-Separated Values), que son tablas de texto plano donde cada fila es un registro y cada columna es un campo.
+
+\begin{lstlisting}[frame=none, numbers=none, basicstyle=\ttfamily\small]
+# Ejemplo de usuarios.csv (visto como tabla)
+| id | username | password_hash                   | fecha_registro |
+|----|----------|---------------------------------|----------------|
+| 1  | Valen    | a1b2c3d4e5f6... (64 caracteres) | 2026-05-30     |
+| 2  | Juan     | 9f8e7d6c5b4a... (64 caracteres) | 2026-06-01     |
+\end{lstlisting}
+
+\subsubsection*{Los cuatro archivos CSV}
+
+\begin{enumerate}
+    \item \textbf{usuarios.csv} -- Almacena las cuentas de usuario: ID, nombre de usuario, hash de contraseña y fecha de registro.
+    \item \textbf{ciudades.csv} -- Almacena las ciudades favoritas de cada usuario, sus coordenadas, umbrales de alerta (en °C y °F) y el último clima consultado (para modo offline).
+    \item \textbf{historial\_clima.csv} -- Almacena datos históricos descargados de la API para evitar consultas repetidas. Se purga automáticamente después de 365 días.
+    \item \textbf{cache\_clima.csv} -- Almacena el último clima consultado de cada ciudad (incluso las no favoritas), para que la aplicación funcione sin internet.
+\end{enumerate}
+
+\subsection{utils/settings.py -- Preferencias de unidades}
+
+Este archivo mantiene en memoria las preferencias del usuario durante la sesión:
+
+\begin{itemize}
+    \item \textbf{Temperatura:} °C o °F.
+    \item \textbf{Velocidad:} km/h o mph.
+\end{itemize}
+
+Las variables son \textbf{globales} (existen fuera de cualquier clase) porque la preferencia debe mantenerse aunque el usuario navegue entre ventanas. Si cambia °C → °F en la pantalla principal, al ir al historial debe seguir en °F.
+
+\textbf{Importante:} Las conversiones se hacen en tiempo real sin volver a consultar la API. La fórmula es:
+\begin{align*}
+    F &= C \times \frac{9}{5} + 32\\
+    \text{mph} &= \text{km/h} \times 0.621371
+\end{align*}
+
+\subsection{utils/chart\_generator.py -- Generación de gráficas}
+
+Este archivo usa \texttt{matplotlib} para crear gráficas profesionales en formato PNG:
+
+\begin{itemize}
+    \item \textbf{chart\_temperatura()} -- Genera una gráfica de líneas con la temperatura máxima (rojo) y mínima (azul) diaria, con relleno entre ambas.
+    \item \textbf{chart\_precipitacion()} -- Genera una gráfica de barras con la lluvia acumulada por día en milímetros (1 mm = 1 litro de agua por metro cuadrado).
+\end{itemize}
+
+Las imágenes se guardan en \texttt{assets/charts/} y se convierten a base64 para mostrarlas en la interfaz de Flet.
+
+% ===============================================================================
+\section{Las vistas (views/) -- La interfaz gráfica}
+% ===============================================================================
+
+Cada archivo en \texttt{views/} representa una \textbf{pantalla} de la aplicación. Todas siguen la misma estructura: una clase con un método \texttt{build()} que construye y devuelve la interfaz.
+
+\subsection{views/login\_view.py -- Inicio de sesión}
+
+\begin{itemize}
+    \item Muestra un formulario con campos de usuario y contraseña.
+    \item Permite alternar entre modo "Iniciar sesión" y "Registrarse".
+    \item Valida que los campos no estén vacíos y que la contraseña tenga al menos 4 caracteres.
+    \item Las contraseñas se almacenan como \textbf{hash SHA-256}, nunca en texto plano.
+\end{itemize}
+
+\subsection{views/home\_view.py -- Pantalla principal}
+
+Es el archivo \textbf{más grande y complejo} (674 líneas). Contiene:
+
+\begin{itemize}
+    \item \textbf{Buscador de ciudades} con sugerencias (hasta 5 resultados) y selección mediante diálogo.
+    \item \textbf{Tarjeta del clima} que muestra temperatura, sensación térmica, humedad, viento e ícono del clima.
+    \item \textbf{Botones de unidad} para alternar entre °C/°F y km/h/mph.
+    \item \textbf{Banner de alerta} que se activa cuando la temperatura supera los umbrales configurados.
+    \item \textbf{Modo offline} que muestra el último clima cacheado con un aviso naranja.
+    \item \textbf{Diálogo de favoritos} que pregunta si se desea agregar la ciudad consultada a la lista de favoritas.
+    \item \textbf{Íconos del clima} generados \textbf{con Pillow} en tiempo real: sol, nubes, lluvia, nieve, tormenta, niebla.
+\end{itemize}
+
+\subsection{views/history\_view.py -- Historial meteorológico}
+
+\begin{itemize}
+    \item Permite seleccionar una ciudad favorita, una fecha de inicio y un número de días (7 a 183).
+    \item Consulta primero la \textbf{caché local} (historial\_clima.csv); si no hay suficientes datos, llama a la API.
+    \item Genera dos gráficas con matplotlib y las muestra en pantalla.
+    \item Calcula estadísticas: promedio de temperatura máxima, promedio de mínima, promedio de lluvia y lluvia total del período.
+    \item La consulta se ejecuta en un \textbf{hilo separado (threading)} para no congelar la interfaz mientras se descargan datos.
+\end{itemize}
+
+\subsection{views/cities\_view.py -- Ciudades favoritas}
+
+\begin{itemize}
+    \item Muestra la lista de ciudades favoritas del usuario con checkboxes.
+    \item Permite agregar nuevas ciudades (las geocodifica primero para obtener coordenadas).
+    \item Permite eliminar ciudades seleccionadas.
+    \item Muestra el conteo de ciudades guardadas.
+\end{itemize}
+
+\subsection{views/alerts\_view.py -- Alertas de temperatura}
+
+\begin{itemize}
+    \item Permite seleccionar una ciudad favorita y definir umbrales de temperatura máxima y mínima.
+    \item Los valores se ajustan con sliders que se validan entre sí (máximo no puede ser menor que mínimo).
+    \item Cada alerta se guarda en °C y también se precalcula en °F para mostrarla rápido si el usuario cambia de unidad.
+    \item Muestra un resumen de todas las alertas activas.
+\end{itemize}
+
+\newpage
+% ===============================================================================
+\section{Seguridad: Hash SHA-256 de contraseñas}
+% ===============================================================================
+
+MeteoApp \textbf{nunca} guarda las contraseñas en texto plano. En su lugar, las convierte en un \textbf{hash} de 64 caracteres hexadecimales utilizando el algoritmo SHA-256.
+
+\subsection{¿Qué es un hash?}
+
+Un hash es una \textbf{huella digital}: una función matemática que toma un texto de cualquier tamaño y produce un valor fijo (64 caracteres). Las propiedades clave son:
+
+\begin{enumerate}
+    \item \textbf{Irreversible:} No se puede obtener la contraseña original a partir del hash.
+    \item \textbf{Determinístico:} La misma contraseña siempre produce el mismo hash.
+    \item \textbf{Unidireccional:} Cambiar un solo carácter de la contraseña produce un hash completamente diferente.
+\end{enumerate}
+
+\subsection{¿Cómo funciona en la aplicación?}
+
+\begin{lstlisting}[language=Python, basicstyle=\ttfamily\small]
+import hashlib
+
+def _codificar_contrasena(password: str) -> str:
+    """Convierte la contrasena en una huella digital SHA-256."""
+    return hashlib.sha256(password.encode()).hexdigest()
+\end{lstlisting}
+
+El proceso es:
+\begin{enumerate}
+    \item El usuario escribe su contraseña (ej. "MiClave2026").
+    \item La aplicación calcula su hash SHA-256 (64 caracteres hexadecimales).
+    \item Guarda \textbf{solo el hash} en usuarios.csv.
+    \item Al iniciar sesión, vuelve a calcular el hash de la contraseña ingresada y lo compara con el guardado.
+\end{enumerate}
+
+\begin{quote}
+\textbf{Ejemplo visual:}
+``hola'' → SHA-256 → ``1406e...b0d3'' (64 caracteres)\\
+``Hola'' → SHA-256 → ``b221d...a4f1'' (completamente diferente por la mayúscula)
+\end{quote}
+
+% ===============================================================================
+\section{Librerías utilizadas}
+% ===============================================================================
+
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Librería} & \textbf{Versión} & \textbf{¿Para qué se usa?} \\
+\hline
+Flet & 0.28.3 & Interfaz gráfica (botones, ventanas, menús) \\
+Requests & -- & Consultas HTTP a la API de Open-Meteo \\
+Pandas & -- & Manejo de datos tabulares (CSV, DataFrames) \\
+Matplotlib & -- & Generación de gráficas científicas \\
+Pillow & -- & Creación de íconos del clima en tiempo real \\
+\hline
+\end{tabular}
+
+\subsection*{¿Cómo se instalan?}
+
+\begin{lstlisting}[frame=none, numbers=none, basicstyle=\ttfamily\small]
+pip install -r requirements.txt
+\end{lstlisting}
+
+El archivo \texttt{requirements.txt} contiene exactamente:
+\begin{lstlisting}[frame=none, numbers=none, basicstyle=\ttfamily\small]
+flet==0.28.3
+pandas
+requests
+matplotlib
+Pillow
+\end{lstlisting}
+
+% ===============================================================================
+\section{Resumen técnico rápido}
+% ===============================================================================
+
+\begin{itemize}[itemsep=4pt]
+    \item \textbf{Lenguaje:} Python 3.10+
+    \item \textbf{Framework gráfico:} Flet 0.28.3 (basado en Flutter)
+    \item \textbf{API externa:} Open-Meteo (gratuita, sin clave)
+    \item \textbf{Persistencia:} 4 archivos CSV gestionados con pandas
+    \item \textbf{Seguridad:} Hash SHA-256 para contraseñas
+    \item \textbf{Gráficas:} Matplotlib con backend sin GUI (Agg)
+    \item \textbf{Íconos:} Generados dinámicamente con Pillow
+    \item \textbf{Asincronía:} threading para consultas de historial sin congelar la UI
+    \item \textbf{Arquitectura:} Separación en vistas (views/) y lógica (utils/)
+    \item \textbf{Modo offline:} Caché local en CSV con detección automática
+\end{itemize}
+
+\end{document}
