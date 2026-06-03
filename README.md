@@ -248,4 +248,26 @@ Todos los datos se guardan en archivos CSV dentro de la carpeta `data/`. **No se
 
 ---
 
+---
+
+## 📝 Conclusiones y posibles mejoras
+
+### Conclusiones
+
+El desarrollo de MeteoApp demostró que es posible construir una interfaz gráfica funcional y atractiva utilizando exclusivamente Python con la biblioteca Flet, integrando consumo de APIs externas, persistencia de datos en CSV y generación de gráficas en tiempo real. La arquitectura modular basada en POO permitió separar claramente la lógica de negocio (`utils/`) de la presentación (`views/`), facilitando el mantenimiento y la escalabilidad del código.
+
+Se logró implementar un flujo completo de usuario: autenticación, consulta de clima actual con geocodificación, historial meteorológico con gráficas comparativas, gestión de ciudades favoritas y un sistema de alertas configurables. El manejo de errores de red y la caché offline aseguran que la aplicación degrade gracefully cuando no hay conexión a internet.
+
+### Posibles mejoras
+
+- **Internacionalización (i18n):** Agregar soporte para múltiples idiomas (inglés, portugués, etc.) usando un archivo de traducciones.
+- **Base de datos SQLite:** Reemplazar los CSV por SQLite para consultas más rápidas y evitar problemas de concurrencia.
+- **Notificaciones del sistema:** Enviar notificaciones nativas del sistema operativo cuando se active una alerta de temperatura, incluso si la app está minimizada.
+- **Pronóstico extendido:** Mostrar el pronóstico de los próximos 7 días con tendencias climáticas.
+- **Exportación de datos:** Permitir exportar el historial meteorológico a PDF o Excel.
+- **Modo oscuro:** Agregar un tema oscuro configurable por el usuario.
+- **Autenticación mejorada:** Implementar registro con confirmación de correo y recuperación de contraseña.
+
+---
+
 > **Autora:** Valentina Rodriguez Sepulveda — 1125789977
