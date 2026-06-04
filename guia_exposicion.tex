@@ -84,36 +84,36 @@ El proyecto está organizado en una arquitectura de tres capas: \textbf{controla
 
 \begin{lstlisting}[frame=none, numbers=none, basicstyle=\ttfamily\footnotesize]
 interfaz_grafica_flet/
-├── main.py
-├── requirements.txt
-├── utils/
-│   ├── api_client.py
-│   ├── data_manager.py
-│   ├── settings.py
-│   └── chart_generator.py
-├── views/
-│   ├── login_view.py
-│   ├── home_view.py
-│   ├── history_view.py
-│   ├── cities_view.py
-│   └── alerts_view.py
-├── data/
-│   ├── usuarios.csv
-│   ├── ciudades.csv
-│   ├── historial_clima.csv
-│   └── cache_clima.csv
-└── assets/
-    └── charts/
+|-- main.py
+|-- requirements.txt
+|-- utils/
+|   |-- api_client.py
+|   |-- data_manager.py
+|   |-- settings.py
+|   \-- chart_generator.py
+|-- views/
+|   |-- login_view.py
+|   |-- home_view.py
+|   |-- history_view.py
+|   |-- cities_view.py
+|   \-- alerts_view.py
+|-- data/
+|   |-- usuarios.csv
+|   |-- ciudades.csv
+|   |-- historial_clima.csv
+|   \-- cache_clima.csv
+\-- assets/
+    \-- charts/
 \end{lstlisting}
 
 \noindent\textbf{Archivos y carpetas clave (breve explicación)}
 \begin{itemize}
     \item \textbf{main.py}: punto de entrada y controlador de navegación entre pantallas.
-    \item \textbf{utils/api_client.py}: consulta Open‑Meteo y traduce las claves JSON a español.
-    \item \textbf{utils/data_manager.py}: lectura y escritura de los CSV en \texttt{data/}.
+    \item \textbf{utils/api\_client.py}: consulta Open-Meteo y traduce las claves JSON a español.
+    \item \textbf{utils/data\_manager.py}: lectura y escritura de los CSV en \texttt{data/}.
     \item \textbf{utils/settings.py}: preferencias de unidades (°C/°F, km/h/mph).
-    \item \textbf{utils/chart_generator.py}: genera las gráficas PNG para \texttt{assets/charts/}.
-    \item \textbf{views/}: contiene las pantallas de la app; \texttt{home_view.py} es la principal.
+    \item \textbf{utils/chart\_generator.py}: genera las gráficas PNG para \texttt{assets/charts/}.
+    \item \textbf{views/}: contiene las pantallas de la app; \texttt{home\_view.py} es la principal.
     \item \textbf{data/}: CSV de persistencia (usuarios, ciudades, historial, cache).
 \end{itemize}
 
@@ -128,29 +128,17 @@ interfaz_grafica_flet/
     \item Finaliza con arquitectura: separaci\'on clara entre vistas (UI) y \texttt{utils/} (l\'ogica y datos).
 \end{itemize}
 
-\subsection{Instrucciones r\'apidas para ejecutar la app}
-Usa un entorno virtual y luego instala dependencias. Instrucciones para Linux/macOS y para Windows (PowerShell o cmd):
-\begin{lstlisting}[frame=none, numbers=none, basicstyle=\ttfamily\small]
-# Linux / macOS (bash)
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python main.py
+\subsection{Cómo ejecutar la aplicación en la exposición}
 
-# Windows (PowerShell)
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-python main.py
+\noindent\textbf{Para la presentación:} se recomienda usar el ejecutable compilado para arranque instantáneo con doble clic, mientras se mantiene el código fuente abierto en el editor para explicar la arquitectura en tiempo real.
 
-# Windows (cmd.exe)
-python -m venv .venv
-.venv\Scripts\activate.bat
-pip install -r requirements.txt
-python main.py
-\end{lstlisting}
+\begin{enumerate}[itemsep=4pt]
+    \item \textbf{Primera vez (solo una vez):} hacer doble clic en \texttt{build\_windows.bat}. Este script crea un entorno virtual, instala todas las dependencias y compila \texttt{MeteoApp.exe} automáticamente.
+    \item \textbf{Siempre:} doble clic en \texttt{MeteoApp.exe} para abrir la aplicación.
+    \item \textbf{En paralelo (durante la exposición):} abrir el código fuente (\texttt{main.py}, \texttt{utils/}, \texttt{views/}) en VS Code o cualquier editor. El ejecutable lee y escribe los archivos \texttt{data/*.csv} en tiempo real, por lo que el público puede ver cómo se crean y actualizan los registros CSV en el editor mientras se usa la aplicación.
+\end{enumerate}
 
-\noindent\textbf{Nota técnica:} si ejecutas en entorno sin GUI (servidor), aseg\'urate de que \texttt{utils/chart_generator.py} use el backend \texttt{Agg} de matplotlib (sin interfaz) para generar PNG.
+\noindent\textbf{Nota técnica:} \texttt{utils/chart\_generator.py} usa el backend \texttt{Agg} de matplotlib (sin interfaz gráfica) para generar los PNG. Esto funciona correctamente tanto en el ejecutable como al correr desde el código fuente con \texttt{python main.py}.
 
 \newpage
 \subsection{Diagrama de flujo de datos}
@@ -183,7 +171,7 @@ python main.py
 \section{main.py -- El punto de entrada}
 % ===============================================================================
 
-El archivo \texttt{main.py} es el \textbf{corazón de la navegación}. Cuando se ejecuta \texttt{python main.py}, ocurre lo siguiente:
+El archivo \texttt{main.py} es el \textbf{corazón de la navegación}. Cuando se ejecuta la aplicación (ya sea con \texttt{python main.py} o mediante el ejecutable \texttt{MeteoApp.exe}), ocurre lo siguiente:
 
 \begin{enumerate}[itemsep=4pt]
     \item Se crea una ventana de 960x680 píxeles con tema azul y fuente Roboto.

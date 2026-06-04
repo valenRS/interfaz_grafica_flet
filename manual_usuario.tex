@@ -110,32 +110,32 @@ Los datos se almacenan de forma permanente: al agregar nueva información, los d
 
 \begin{lstlisting}[frame=none, numbers=none, basicstyle=\ttfamily\footnotesize]
 interfaz_grafica_flet/
-├── main.py
-├── requirements.txt
-│
-├── utils/
-│   ├── api_client.py
-│   ├── data_manager.py
-│   ├── settings.py
-│   └── chart_generator.py
-│
-├── views/
-│   ├── login_view.py
-│   ├── home_view.py
-│   ├── history_view.py
-│   ├── cities_view.py
-│   └── alerts_view.py
-│
-├── data/
-│   ├── usuarios.csv
-│   ├── ciudades.csv
-│   ├── historial_clima.csv
-│   └── cache_clima.csv
-│
-└── assets/
-    ├── charts/
-    ├── icons/
-    └── screenshots/
+|-- main.py
+|-- requirements.txt
+|
+|-- utils/
+|   |-- api_client.py
+|   |-- data_manager.py
+|   |-- settings.py
+|   \-- chart_generator.py
+|
+|-- views/
+|   |-- login_view.py
+|   |-- home_view.py
+|   |-- history_view.py
+|   |-- cities_view.py
+|   \-- alerts_view.py
+|
+|-- data/
+|   |-- usuarios.csv
+|   |-- ciudades.csv
+|   |-- historial_clima.csv
+|   \-- cache_clima.csv
+|
+\-- assets/
+    |-- charts/
+    |-- icons/
+    \-- screenshots/
 \end{lstlisting}
 
 \vspace{0.3cm}
@@ -293,31 +293,42 @@ A continuación se muestran ejemplos de las gráficas que genera la aplicación 
 % ===============================================================================
 \subsection{Requisitos}
 \begin{itemize}
-    \item Python 3.10 o superior.
+    \item Python 3.10 o superior (solo la primera vez para compilar; el ejecutable final no requiere Python instalado).
     \item Conexión a internet (para consultar la API; la aplicación también funciona offline con datos cacheados).
 \end{itemize}
-\subsection{Instalación}
+
+\subsection{Opción A: Ejecutable (Windows) -- Recomendado}
+
+La forma más sencilla de usar la aplicación es mediante el ejecutable compilado. Solo se requiere hacer la compilación una vez:
+
+\begin{enumerate}[itemsep=4pt]
+    \item Abrir la carpeta del proyecto.
+    \item Hacer doble clic en \texttt{build\_windows.bat} (solo la primera vez). Este script instala las dependencias y compila \texttt{MeteoApp.exe} automáticamente.
+    \item Al finalizar, aparecerá \texttt{MeteoApp.exe} en la carpeta raíz del proyecto.
+    \item Para ejecutar la aplicación, hacer doble clic en \texttt{MeteoApp.exe}.
+\end{enumerate}
+
+\noindent\textbf{Nota:} en futuras ocasiones no es necesario volver a ejecutar \texttt{build\_windows.bat}. Basta con hacer doble clic en \texttt{MeteoApp.exe}.
+
+\subsection{Opción B: Desde el código fuente}
+
+Si se desea ejecutar directamente con Python (por ejemplo, para modificar el código o para sistemas Linux/macOS):
 \begin{lstlisting}[frame=none, numbers=none, basicstyle=\ttfamily\small]
-# 1. Clonar el repositorio
-git clone https://github.com/valenRS/interfaz_grafica_flet.git
-cd interfaz_grafica_flet
+
+# 1. Descargar y descomprimir el archivo .zip
+
 # 2. Crear y activar entorno virtual
-python3 -m venv .venv
+
+python3 -m venv .venv  (cambia el comando si está usando Anaconda en windows )
 source .venv/bin/activate      # Linux/Mac
 # .venv\Scripts\activate       # Windows
+
 # 3. Instalar dependencias
 python -m pip install --upgrade pip
 pip install -r requirements.txt
+
 # 4. Ejecutar la aplicacion
 python main.py
-\end{lstlisting}
-\subsection{Archivo requirements.txt}
-\begin{lstlisting}[frame=none, numbers=none, basicstyle=\ttfamily\small]
-flet==0.28.3
-pandas
-requests
-matplotlib
-Pillow
 \end{lstlisting}
 % ===============================================================================
 \section{Conclusiones y Posibles Mejoras}

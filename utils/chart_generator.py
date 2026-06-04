@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import matplotlib
@@ -14,7 +15,10 @@ import pandas as pd
 
 # ── Rutas ─────────────────────────────────────────────────────────────────────
 
-_DIRECTORIO_GRAFICAS = Path(__file__).resolve().parent.parent / "assets" / "charts"
+if getattr(sys, "frozen", False):
+    _DIRECTORIO_GRAFICAS = Path(sys.executable).parent / "assets" / "charts"
+else:
+    _DIRECTORIO_GRAFICAS = Path(__file__).resolve().parent.parent / "assets" / "charts"
 _DIRECTORIO_GRAFICAS.mkdir(parents=True, exist_ok=True)
 
 # ── Paleta ────────────────────────────────────────────────────────────────────
